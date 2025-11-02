@@ -173,9 +173,16 @@ function spawnObstacle() {
   const types = [400, 400, 400, 500, 500];
   const type = types[Math.floor(Math.random() * types.length)];
   const gap = 350 + Math.random() * 250;
-  // Different height levels: ground, mid, high
-  const heights = [groundY, groundY - 150, groundY - 280];
-  const height = heights[Math.floor(Math.random() * heights.length)];
+  // Different height levels: ground (60%), mid (30%), high (10%)
+  const rand = Math.random();
+  let height;
+  if (rand < 0.6) {
+    height = groundY; // Ground level - most common
+  } else if (rand < 0.9) {
+    height = groundY - 150; // Mid level
+  } else {
+    height = groundY - 280; // High level
+  }
   enemies.push({ x: lastObstacleX + gap, y: height, type, w: 45, h: 55, pulse: 0 });
   lastObstacleX = lastObstacleX + gap;
 }
@@ -335,7 +342,7 @@ function update(time, delta) {
     spawnCode();
   }
   
-  if (Math.random() < 0.0015 && bananas.length < 2) {
+  if (Math.random() < 0.006 && bananas.length < 5) {
     bananas.push({ x: cameraX + 900, y: groundY - 25, r: 10, t: 0 });
   }
   
