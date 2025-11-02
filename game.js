@@ -20,6 +20,7 @@ let timerText, scoreText1, scoreText2, gameOver = false;
 let graphics, scene, twoPlayer = false;
 let p1Immune = false, p2Immune = false;
 let immuneTimer1 = 0, immuneTimer2 = 0;
+let p1Alive = true, p2Alive = true;
 let speed = 4, groundY = 500;
 let spawnTimer = 0, codeSpawnTimer = 0;
 let p1Jumping = false, p1JumpVel = 0;
@@ -105,6 +106,8 @@ function create() {
       bananas = [];
       p1Immune = false;
       p2Immune = false;
+      p1Alive = true;
+      p2Alive = true;
       cameraX = 0;
       lastObstacleX = 600;
       spawnTimer = 0;
@@ -166,24 +169,26 @@ function update(time, delta) {
     if (immuneTimer2 <= 0) p2Immune = false;
   }
   
-  if (cursors.up.isDown && !p1Jumping && p1.y >= groundY) {
-    p1Jumping = true;
-    p1JumpVel = -13;
-    playTone(300, 0.1);
-  }
-  
-  if (p1Jumping || p1.y < groundY) {
-    p1.y += p1JumpVel;
-    p1JumpVel += 0.55;
+  if (p1Alive) {
+    if (cursors.up.isDown && !p1Jumping && p1.y >= groundY) {
+      p1Jumping = true;
+      p1JumpVel = -13;
+      playTone(300, 0.1);
+    }
     
-    if (p1.y >= groundY) {
-      p1.y = groundY;
-      p1Jumping = false;
-      p1JumpVel = 0;
+    if (p1Jumping || p1.y < groundY) {
+      p1.y += p1JumpVel;
+      p1JumpVel += 0.55;
+      
+      if (p1.y >= groundY) {
+        p1.y = groundY;
+        p1Jumping = false;
+        p1JumpVel = 0;
+      }
     }
   }
   
-  if (twoPlayer && p2) {
+  if (twoPlayer && p2 && p2Alive) {
     if (wasd.W.isDown && !p2Jumping && p2.y >= groundY) {
       p2Jumping = true;
       p2JumpVel = -13;
@@ -224,8 +229,12 @@ function update(time, delta) {
       for (let e of enemies) {
         const ex = e.x - cameraX;
         if (ex < p2.x + p2.w && ex + e.w > p2.x && e.y < p2.y + p2.h && e.y + e.h > p2.y) {
-          endGame(false);
-          return;
+          p2Alive = false;
+          if (!p1Alive) {
+            endGame(false);
+            return;
+          }
+          break;
         }
       }
     } else {
@@ -243,24 +252,26 @@ function update(time, delta) {
     }
   }
   
-  codes = codes.filter(c => {
-    if (Math.abs(p1.x - (c.x - cameraX)) < 25 && Math.abs(p1.y - c.y) < 25) {
-      p1Collected += 200;
-      playTone(600, 0.1);
-      return false;
-    }
-    return true;
-  });
-  
-  bananas = bananas.filter(b => {
-    if (Math.abs(p1.x - (b.x - cameraX)) < 25 && Math.abs(p1.y - b.y) < 25) {
-      p1Immune = true;
-      immuneTimer1 = 5000;
-      playTone(800, 0.15);
-      return false;
-    }
-    return true;
-  });
+  if (p1Alive) {
+    codes = codes.filter(c => {
+      if (Math.abs(p1.x - (c.x - cameraX)) < 25 && Math.abs(p1.y - c.y) < 25) {
+        p1Collected += 200;
+        playTone(600, 0.1);
+        return false;
+      }
+      return true;
+    });
+    
+    bananas = bananas.filter(b => {
+      if (Math.abs(p1.x - (b.x - cameraX)) < 25 && Math.abs(p1.y - b.y) < 25) {
+        p1Immune = true;
+        immuneTimer1 = 5000;
+        playTone(800, 0.15);
+        return false;
+      }
+      return true;
+    });
+  }
   
   spawnTimer += delta * speed * 0.5;
   if (spawnTimer > 200) {
@@ -281,23 +292,29 @@ function update(time, delta) {
   bananas.forEach(b => b.t += delta);
   bananas = bananas.filter(b => b.t < 15000);
   
-  if (!p1Immune) {
-    for (let e of enemies) {
-      const ex = e.x - cameraX;
-      if (ex < p1.x + p1.w && ex + e.w > p1.x && e.y < p1.y + p1.h && e.y + e.h > p1.y) {
-        endGame(false);
-        return;
+  if (p1Alive) {
+    if (!p1Immune) {
+      for (let e of enemies) {
+        const ex = e.x - cameraX;
+        if (ex < p1.x + p1.w && ex + e.w > p1.x && e.y < p1.y + p1.h && e.y + e.h > p1.y) {
+          p1Alive = false;
+          if (!twoPlayer || !p2Alive) {
+            endGame(false);
+            return;
+          }
+          break;
+        }
       }
-    }
-  } else {
-    for (let e of enemies) {
-      const ex = e.x - cameraX;
-      if (ex < p1.x + p1.w && ex + e.w > p1.x && e.y < p1.y + p1.h && e.y + e.h > p1.y) {
-        const idx = enemies.indexOf(e);
-        if (idx >= 0) {
-          p1Points += e.type;
-          enemies.splice(idx, 1);
-          playTone(400, 0.2);
+    } else {
+      for (let e of enemies) {
+        const ex = e.x - cameraX;
+        if (ex < p1.x + p1.w && ex + e.w > p1.x && e.y < p1.y + p1.h && e.y + e.h > p1.y) {
+          const idx = enemies.indexOf(e);
+          if (idx >= 0) {
+            p1Points += e.type;
+            enemies.splice(idx, 1);
+            playTone(400, 0.2);
+          }
         }
       }
     }
@@ -392,7 +409,7 @@ function drawGame() {
   });
   
   if (p1) {
-    const p1Color = p1Immune ? 0x00ffff : 0xffdd00;
+    const p1Color = p1Alive ? (p1Immune ? 0x00ffff : 0xffdd00) : 0x808080;
     const cx = p1.x + p1.w/2;
     const cy = p1.y + p1.h/2;
     
@@ -401,22 +418,24 @@ function drawGame() {
     graphics.arc(cx, cy, p1.w/2, 0, Math.PI * 2);
     graphics.fillPath();
     
-    graphics.lineStyle(3, 0xffaa00, 1);
+    graphics.lineStyle(3, p1Alive ? 0xffaa00 : 0x555555, 1);
     graphics.beginPath();
     graphics.arc(cx, cy, p1.w/2, 0, Math.PI * 2);
     graphics.strokePath();
     
-    graphics.fillStyle(0xffffaa, 0.6);
-    graphics.fillCircle(cx - 7, cy - 5, 7);
-    
-    graphics.fillStyle(0x000000, 1);
-    graphics.fillCircle(cx - 4, cy - 4, 3);
-    graphics.fillCircle(cx + 4, cy - 4, 3);
-    graphics.fillRect(cx - 2, cy + 2, 4, 2);
+    if (p1Alive) {
+      graphics.fillStyle(0xffffaa, 0.6);
+      graphics.fillCircle(cx - 7, cy - 5, 7);
+      
+      graphics.fillStyle(0x000000, 1);
+      graphics.fillCircle(cx - 4, cy - 4, 3);
+      graphics.fillCircle(cx + 4, cy - 4, 3);
+      graphics.fillRect(cx - 2, cy + 2, 4, 2);
+    }
   }
   
   if (twoPlayer && p2) {
-    const p2Color = p2Immune ? 0x00ffff : 0x00ff88;
+    const p2Color = p2Alive ? (p2Immune ? 0x00ffff : 0x00ff88) : 0x808080;
     const cx2 = p2.x + p2.w/2;
     const cy2 = p2.y + p2.h/2;
     
@@ -425,18 +444,20 @@ function drawGame() {
     graphics.arc(cx2, cy2, p2.w/2, 0, Math.PI * 2);
     graphics.fillPath();
     
-    graphics.lineStyle(3, 0x00aa66, 1);
+    graphics.lineStyle(3, p2Alive ? 0x00aa66 : 0x555555, 1);
     graphics.beginPath();
     graphics.arc(cx2, cy2, p2.w/2, 0, Math.PI * 2);
     graphics.strokePath();
     
-    graphics.fillStyle(0x88ffaa, 0.6);
-    graphics.fillCircle(cx2 - 7, cy2 - 5, 7);
-    
-    graphics.fillStyle(0x000000, 1);
-    graphics.fillCircle(cx2 - 4, cy2 - 4, 3);
-    graphics.fillCircle(cx2 + 4, cy2 - 4, 3);
-    graphics.fillRect(cx2 - 2, cy2 + 2, 4, 2);
+    if (p2Alive) {
+      graphics.fillStyle(0x88ffaa, 0.6);
+      graphics.fillCircle(cx2 - 7, cy2 - 5, 7);
+      
+      graphics.fillStyle(0x000000, 1);
+      graphics.fillCircle(cx2 - 4, cy2 - 4, 3);
+      graphics.fillCircle(cx2 + 4, cy2 - 4, 3);
+      graphics.fillRect(cx2 - 2, cy2 + 2, 4, 2);
+    }
   }
 }
 
@@ -502,6 +523,8 @@ function restartGame() {
   bananas = [];
   p1Immune = false;
   p2Immune = false;
+  p1Alive = true;
+  p2Alive = true;
   twoPlayer = false;
   speed = 4;
   cameraX = 0;
