@@ -1,5 +1,5 @@
 // HTTP Monkey: Debug the Maze
-// Neon digital maze game where hacker monkeys collect 200 codes and dodge 400/500 errors
+// Side-scrolling runner - banana collects 200 codes, dodges 400/500 errors
 
 const config = {
   type: Phaser.AUTO,
@@ -14,162 +14,134 @@ const config = {
 
 const game = new Phaser.Game(config);
 
-// Game state
-let p1, p2;
-let codes = [];
-let enemies = [];
-let bananas = [];
-let walls = [];
-let grid = [];
-let gridSize = 20;
-let cols, rows;
-let collected = 0;
-let totalCodes = 200;
-let timer = 120000;
-let timerText;
-let scoreText;
-let gameOver = false;
-let graphics;
-let gameScene;
-let twoPlayer = false;
-let p1Immune = false;
-let p2Immune = false;
-let immuneTimer1 = 0;
-let immuneTimer2 = 0;
+let p1, p2, codes = [], enemies = [], bananas = [];
+let p1Collected = 0, p2Collected = 0, totalCodes = 200, timer = 120000;
+let timerText, scoreText1, scoreText2, gameOver = false;
+let graphics, scene, twoPlayer = false;
+let p1Immune = false, p2Immune = false;
+let immuneTimer1 = 0, immuneTimer2 = 0;
+let speed = 4, groundY = 500;
+let spawnTimer = 0, codeSpawnTimer = 0;
+let p1Jumping = false, p1JumpVel = 0;
+let p2Jumping = false, p2JumpVel = 0;
+let cameraX = 0, lastObstacleX = 600;
+let cursors, wasd, spaceKey;
 
-// Controls
-let cursors, wasd;
-
-function create() {
-  gameScene = this;
-  graphics = this.add.graphics();
-  
-  cols = Math.floor(800 / gridSize);
-  rows = Math.floor(600 / gridSize);
-  
-  // Initialize grid
-  for (let y = 0; y < rows; y++) {
-    grid[y] = [];
-    for (let x = 0; x < cols; x++) {
-      grid[y][x] = 0;
+// Simple digit patterns - 5x7 grid, bold and clear
+function drawDigit(g, x, y, digit, size) {
+  const patterns = {
+    '0': [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]],
+    '2': [[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1]],
+    '4': [[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,0,1]],
+    '5': [[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[1,1,1,1,1]]
+  };
+  const p = patterns[digit];
+  if (!p) return;
+  // Draw with black outline for contrast
+  g.fillStyle(0x000000, 0.9);
+  for (let row = 0; row < 7; row++) {
+    for (let col = 0; col < 5; col++) {
+      if (p[row][col]) {
+        g.fillRect(x + col * size - 1, y + row * size - 1, size + 2, size + 2);
+      }
     }
   }
+  // Draw white fill
+  g.fillStyle(0xffffff, 1);
+  for (let row = 0; row < 7; row++) {
+    for (let col = 0; col < 5; col++) {
+      if (p[row][col]) {
+        g.fillRect(x + col * size, y + row * size, size, size);
+      }
+    }
+  }
+}
+
+function create() {
+  scene = this;
+  graphics = this.add.graphics();
   
-  // Generate maze
-  generateMaze();
-  
-  // Create players
-  p1 = { x: 1, y: 1, vx: 0, vy: 0, s: 0.1 };
+  p1 = { x: 100, y: groundY, w: 35, h: 45 };
   twoPlayer = false;
   
-  // Create collectibles
-  spawnCodes();
-  
-  // Create enemies
-  spawnEnemies();
-  
-  // Spawn bananas periodically
-  spawnBanana();
-  this.time.addEvent({
-    delay: 8000,
-    callback: spawnBanana,
-    loop: true
-  });
-  
-  // UI
   timerText = this.add.text(10, 10, 'Time: 120', {
     fontSize: '20px',
     fontFamily: 'Arial',
     color: '#00ffff'
   });
   
-  scoreText = this.add.text(10, 35, 'Codes: 0/200', {
+  scoreText1 = this.add.text(10, 35, 'P1: 0/200', {
     fontSize: '20px',
     fontFamily: 'Arial',
     color: '#00ff00'
   });
   
-  this.add.text(10, 570, 'Press SPACE for 2P mode | Arrow Keys: P1 | WASD: P2', {
+  scoreText2 = this.add.text(10, 60, 'P2: 0/200', {
+    fontSize: '20px',
+    fontFamily: 'Arial',
+    color: '#00aa00',
+    visible: false
+  });
+  
+  this.add.text(10, 570, 'UP: Jump | SPACE: Add P2', {
     fontSize: '14px',
     fontFamily: 'Arial',
     color: '#888888'
   });
   
-  // Input
   cursors = this.input.keyboard.createCursorKeys();
   wasd = this.input.keyboard.addKeys('W,S,A,D');
+  spaceKey = this.input.keyboard.addKey('SPACE');
+  
   this.input.keyboard.on('keydown-SPACE', () => {
     if (!gameOver && !twoPlayer) {
+      p1Collected = 0;
+      p2Collected = 0;
+      timer = 120000;
+      codes = [];
+      enemies = [];
+      bananas = [];
+      p1Immune = false;
+      p2Immune = false;
+      cameraX = 0;
+      lastObstacleX = 600;
+      spawnTimer = 0;
+      codeSpawnTimer = 0;
+      p1Jumping = false;
+      p1JumpVel = 0;
+      p2Jumping = false;
+      p2JumpVel = 0;
+      p1.x = 100;
+      p1.y = groundY;
       twoPlayer = true;
-      p2 = { x: cols - 2, y: rows - 2, vx: 0, vy: 0, s: 0.1 };
+      p2 = { x: 150, y: groundY, w: 35, h: 45 };
+      scoreText2.setVisible(true);
+        for (let i = 0; i < 5; i++) {
+          codes.push({ x: 400 + i * 150, y: groundY - 50 - Math.random() * 100, r: 18 });
+        }
+      spawnObstacle();
     }
   });
-}
-
-function generateMaze() {
-  // Simple maze with walls
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      if (x === 0 || y === 0 || x === cols - 1 || y === rows - 1) {
-        grid[y][x] = 1;
-        walls.push({ x, y });
-      } else if ((x % 3 === 0 || y % 3 === 0) && Math.random() > 0.3) {
-        grid[y][x] = 1;
-        walls.push({ x, y });
-      }
-    }
-  }
   
-  // Ensure path exists
-  for (let y = 2; y < rows - 2; y += 3) {
-    for (let x = 2; x < cols - 2; x += 3) {
-      grid[y][x] = 0;
-      const idx = walls.findIndex(w => w.x === x && w.y === y);
-      if (idx >= 0) walls.splice(idx, 1);
-    }
+  for (let i = 0; i < 5; i++) {
+    codes.push({ x: 400 + i * 150, y: groundY - 50 - Math.random() * 100, r: 18 });
   }
+  spawnObstacle();
+  
+  drawGame();
 }
 
-function spawnCodes() {
-  let count = 0;
-  while (count < totalCodes) {
-    const x = Math.floor(Math.random() * (cols - 2)) + 1;
-    const y = Math.floor(Math.random() * (rows - 2)) + 1;
-    if (grid[y][x] === 0 && !codes.find(c => c.x === x && c.y === y)) {
-      codes.push({ x, y });
-      count++;
-    }
-  }
+function spawnObstacle() {
+  const types = [400, 400, 400, 500, 500];
+  const type = types[Math.floor(Math.random() * types.length)];
+  const gap = 350 + Math.random() * 250;
+  enemies.push({ x: lastObstacleX + gap, y: groundY, type, w: 45, h: 55, pulse: 0 });
+  lastObstacleX = lastObstacleX + gap;
 }
 
-function spawnEnemies() {
-  const enemyCount = 8;
-  for (let i = 0; i < enemyCount; i++) {
-    let x, y, valid = false;
-    while (!valid) {
-      x = Math.floor(Math.random() * (cols - 2)) + 1;
-      y = Math.floor(Math.random() * (rows - 2)) + 1;
-      if (grid[y][x] === 0) valid = true;
-    }
-    enemies.push({
-      x, y, type: i % 2 === 0 ? 400 : 500,
-      tx: x, ty: y, s: 0.08
-    });
-  }
-}
-
-function spawnBanana() {
-  if (bananas.length >= 3) return;
-  let x, y, valid = false, attempts = 0;
-  while (!valid && attempts < 50) {
-    x = Math.floor(Math.random() * (cols - 2)) + 1;
-    y = Math.floor(Math.random() * (rows - 2)) + 1;
-    if (grid[y][x] === 0 && !codes.find(c => c.x === x && c.y === y)) {
-      valid = true;
-    }
-    attempts++;
-  }
-  if (valid) bananas.push({ x, y, t: 0 });
+function spawnCode() {
+  const y = groundY - 30 - Math.random() * 120;
+  codes.push({ x: cameraX + 500 + Math.random() * 200, y, r: 18 });
 }
 
 function update(time, delta) {
@@ -181,12 +153,14 @@ function update(time, delta) {
     return;
   }
   
-  if (collected >= totalCodes) {
+  const totalCollected = twoPlayer ? (p1Collected + p2Collected) : p1Collected;
+  if (totalCollected >= totalCodes) {
     endGame(true);
     return;
   }
   
-  // Update immune timers
+  cameraX += speed;
+  
   if (p1Immune) {
     immuneTimer1 -= delta;
     if (immuneTimer1 <= 0) p1Immune = false;
@@ -196,240 +170,289 @@ function update(time, delta) {
     if (immuneTimer2 <= 0) p2Immune = false;
   }
   
-  // Player 1 controls
-  if (cursors.left.isDown && grid[Math.floor(p1.y)][Math.floor(p1.x - 0.5)] === 0) {
-    p1.vx = -0.15;
-  } else if (cursors.right.isDown && grid[Math.floor(p1.y)][Math.floor(p1.x + 0.5)] === 0) {
-    p1.vx = 0.15;
-  } else {
-    p1.vx *= 0.8;
+  if (cursors.up.isDown && !p1Jumping && p1.y >= groundY) {
+    p1Jumping = true;
+    p1JumpVel = -13;
+    playTone(300, 0.1);
   }
   
-  if (cursors.up.isDown && grid[Math.floor(p1.y - 0.5)][Math.floor(p1.x)] === 0) {
-    p1.vy = -0.15;
-  } else if (cursors.down.isDown && grid[Math.floor(p1.y + 0.5)][Math.floor(p1.x)] === 0) {
-    p1.vy = 0.15;
-  } else {
-    p1.vy *= 0.8;
+  if (p1Jumping || p1.y < groundY) {
+    p1.y += p1JumpVel;
+    p1JumpVel += 0.55;
+    
+    if (p1.y >= groundY) {
+      p1.y = groundY;
+      p1Jumping = false;
+      p1JumpVel = 0;
+    }
   }
   
-  // Player 2 controls
   if (twoPlayer && p2) {
-    if (wasd.A.isDown && grid[Math.floor(p2.y)][Math.floor(p2.x - 0.5)] === 0) {
-      p2.vx = -0.15;
-    } else if (wasd.D.isDown && grid[Math.floor(p2.y)][Math.floor(p2.x + 0.5)] === 0) {
-      p2.vx = 0.15;
-    } else {
-      p2.vx *= 0.8;
+    if (wasd.W.isDown && !p2Jumping && p2.y >= groundY) {
+      p2Jumping = true;
+      p2JumpVel = -13;
+      playTone(300, 0.1);
     }
     
-    if (wasd.W.isDown && grid[Math.floor(p2.y - 0.5)][Math.floor(p2.x)] === 0) {
-      p2.vy = -0.15;
-    } else if (wasd.S.isDown && grid[Math.floor(p2.y + 0.5)][Math.floor(p2.x)] === 0) {
-      p2.vy = 0.15;
-    } else {
-      p2.vy *= 0.8;
+    if (p2Jumping || p2.y < groundY) {
+      p2.y += p2JumpVel;
+      p2JumpVel += 0.55;
+      
+      if (p2.y >= groundY) {
+        p2.y = groundY;
+        p2Jumping = false;
+        p2JumpVel = 0;
+      }
     }
     
-    p2.x += p2.vx;
-    p2.y += p2.vy;
-    
-    // Player 2 boundaries
-    p2.x = Math.max(0.5, Math.min(cols - 1.5, p2.x));
-    p2.y = Math.max(0.5, Math.min(rows - 1.5, p2.y));
-    
-    // Collect codes
     codes = codes.filter(c => {
-      if (Math.abs(p2.x - c.x) < 0.5 && Math.abs(p2.y - c.y) < 0.5) {
-        collected++;
-        playTone(gameScene, 600, 0.1);
+      if (Math.abs(p2.x - (c.x - cameraX)) < 25 && Math.abs(p2.y - c.y) < 25) {
+        p2Collected++;
+        playTone(600, 0.1);
         return false;
       }
       return true;
     });
     
-    // Collect bananas
     bananas = bananas.filter(b => {
-      if (Math.abs(p2.x - b.x) < 0.5 && Math.abs(p2.y - b.y) < 0.5) {
+      if (Math.abs(p2.x - (b.x - cameraX)) < 25 && Math.abs(p2.y - b.y) < 25) {
         p2Immune = true;
         immuneTimer2 = 5000;
-        playTone(gameScene, 800, 0.15);
+        playTone(800, 0.15);
         return false;
       }
       return true;
     });
     
-    // Enemy collision P2
     if (!p2Immune) {
       for (let e of enemies) {
-        if (Math.abs(p2.x - e.x) < 0.6 && Math.abs(p2.y - e.y) < 0.6) {
+        const ex = e.x - cameraX;
+        if (ex < p2.x + p2.w && ex + e.w > p2.x && e.y < p2.y + p2.h && e.y + e.h > p2.y) {
           endGame(false);
           return;
         }
       }
     } else {
-      // Debug enemies when immune
       for (let e of enemies) {
-        if (Math.abs(p2.x - e.x) < 0.6 && Math.abs(p2.y - e.y) < 0.6) {
+        const ex = e.x - cameraX;
+        if (ex < p2.x + p2.w && ex + e.w > p2.x && e.y < p2.y + p2.h && e.y + e.h > p2.y) {
           const idx = enemies.indexOf(e);
           if (idx >= 0) {
             enemies.splice(idx, 1);
-            playTone(gameScene, 400, 0.2);
-            if (enemies.length === 0) spawnEnemies();
+            playTone(400, 0.2);
           }
         }
       }
     }
   }
   
-  // Update player 1
-  p1.x += p1.vx;
-  p1.y += p1.vy;
-  
-  // Player 1 boundaries
-  p1.x = Math.max(0.5, Math.min(cols - 1.5, p1.x));
-  p1.y = Math.max(0.5, Math.min(rows - 1.5, p1.y));
-  
-  // Collect codes
   codes = codes.filter(c => {
-    if (Math.abs(p1.x - c.x) < 0.5 && Math.abs(p1.y - c.y) < 0.5) {
-      collected++;
-      playTone(gameScene, 600, 0.1);
+    if (Math.abs(p1.x - (c.x - cameraX)) < 25 && Math.abs(p1.y - c.y) < 25) {
+      p1Collected++;
+      playTone(600, 0.1);
       return false;
     }
     return true;
   });
   
-  // Collect bananas
   bananas = bananas.filter(b => {
-    if (Math.abs(p1.x - b.x) < 0.5 && Math.abs(p1.y - b.y) < 0.5) {
+    if (Math.abs(p1.x - (b.x - cameraX)) < 25 && Math.abs(p1.y - b.y) < 25) {
       p1Immune = true;
       immuneTimer1 = 5000;
-      playTone(gameScene, 800, 0.15);
+      playTone(800, 0.15);
       return false;
     }
     return true;
   });
   
-  // Enemy AI
-  for (let e of enemies) {
-    const target = twoPlayer && p2 ? 
-      (Math.abs(e.x - p1.x) + Math.abs(e.y - p1.y) < 
-       Math.abs(e.x - p2.x) + Math.abs(e.y - p2.y) ? p1 : p2) : p1;
-    
-    let dx = target.x - e.x;
-    let dy = target.y - e.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > 0) {
-      dx /= dist;
-      dy /= dist;
+  spawnTimer += delta * speed * 0.5;
+  if (spawnTimer > 200) {
+    spawnTimer = 0;
+    spawnObstacle();
+  }
+  
+  codeSpawnTimer += delta * speed * 0.3;
+  if (codeSpawnTimer > 120 && codes.length < 15) {
+    codeSpawnTimer = 0;
+    spawnCode();
+  }
+  
+  if (Math.random() < 0.0015 && bananas.length < 2) {
+    bananas.push({ x: cameraX + 900, y: groundY - 25, r: 10, t: 0 });
+  }
+  
+  bananas.forEach(b => b.t += delta);
+  bananas = bananas.filter(b => b.t < 15000);
+  
+  if (!p1Immune) {
+    for (let e of enemies) {
+      const ex = e.x - cameraX;
+      if (ex < p1.x + p1.w && ex + e.w > p1.x && e.y < p1.y + p1.h && e.y + e.h > p1.y) {
+        endGame(false);
+        return;
+      }
     }
-    
-    let nx = e.x + dx * e.s;
-    let ny = e.y + dy * e.s;
-    
-    // Wall check
-    if (grid[Math.floor(ny)][Math.floor(nx)] === 0) {
-      e.x = nx;
-      e.y = ny;
-    } else {
-      // Try alternative paths
-      if (grid[Math.floor(e.y)][Math.floor(nx)] === 0) e.x = nx;
-      else if (grid[Math.floor(ny)][Math.floor(e.x)] === 0) e.y = ny;
-    }
-    
-    // Collision with player 1
-    if (!p1Immune && Math.abs(p1.x - e.x) < 0.6 && Math.abs(p1.y - e.y) < 0.6) {
-      endGame(false);
-      return;
-    }
-    
-    // Debug enemy when immune
-    if (p1Immune && Math.abs(p1.x - e.x) < 0.6 && Math.abs(p1.y - e.y) < 0.6) {
-      const idx = enemies.indexOf(e);
-      if (idx >= 0) {
-        enemies.splice(idx, 1);
-        playTone(gameScene, 400, 0.2);
-        if (enemies.length === 0) spawnEnemies();
+  } else {
+    for (let e of enemies) {
+      const ex = e.x - cameraX;
+      if (ex < p1.x + p1.w && ex + e.w > p1.x && e.y < p1.y + p1.h && e.y + e.h > p1.y) {
+        const idx = enemies.indexOf(e);
+        if (idx >= 0) {
+          enemies.splice(idx, 1);
+          playTone(400, 0.2);
+        }
       }
     }
   }
   
-  // Update banana timers
-  bananas.forEach(b => b.t += delta);
-  bananas = bananas.filter(b => b.t < 10000);
+  enemies = enemies.filter(e => e.x - cameraX > -100);
+  codes = codes.filter(c => c.x - cameraX > -100);
   
-  // Update UI
   timerText.setText('Time: ' + Math.ceil(timer / 1000));
-  scoreText.setText('Codes: ' + collected + '/' + totalCodes);
+  scoreText1.setText('P1: ' + p1Collected + '/' + totalCodes);
+  if (twoPlayer) {
+    scoreText2.setText('P2: ' + p2Collected + '/' + totalCodes);
+  }
   
   drawGame();
 }
 
 function drawGame() {
+  if (!graphics) return;
   graphics.clear();
   
-  // Draw maze walls (neon cyan)
-  walls.forEach(w => {
-    graphics.fillStyle(0x00ffff, 0.3);
-    graphics.fillRect(w.x * gridSize, w.y * gridSize, gridSize, gridSize);
-    graphics.lineStyle(2, 0x00ffff, 0.6);
-    graphics.strokeRect(w.x * gridSize, w.y * gridSize, gridSize, gridSize);
-  });
+  graphics.lineStyle(3, 0x00ffff, 0.5);
+  graphics.moveTo(0, groundY + 28);
+  graphics.lineTo(800, groundY + 28);
+  graphics.strokePath();
   
-  // Draw collectible codes (green 200)
+  for (let i = 0; i < 40; i++) {
+    const x = (i * 20 - cameraX % 20);
+    if (x >= -20 && x <= 820) {
+      graphics.lineStyle(1, 0x00ffff, 0.1);
+      graphics.moveTo(x, 0);
+      graphics.lineTo(x, 600);
+      graphics.strokePath();
+    }
+  }
+  
   codes.forEach(c => {
-    graphics.fillStyle(0x00ff00, 0.8);
-    graphics.fillCircle(c.x * gridSize + gridSize/2, c.y * gridSize + gridSize/2, 6);
-    graphics.lineStyle(1, 0x00ff00, 1);
-    graphics.strokeCircle(c.x * gridSize + gridSize/2, c.y * gridSize + gridSize/2, 6);
+    const x = c.x - cameraX;
+    if (x > -50 && x < 850) {
+      graphics.fillStyle(0x00ff00, 0.9);
+      graphics.fillCircle(x, c.y, c.r);
+      graphics.lineStyle(2, 0x00ff00, 1);
+      graphics.strokeCircle(x, c.y, c.r);
+      
+      // Draw "200" - clear and large
+      const cx = x;
+      const cy = c.y - 14;
+      drawDigit(graphics, cx - 16, cy, '2', 2);
+      drawDigit(graphics, cx - 4, cy, '0', 2);
+      drawDigit(graphics, cx + 8, cy, '0', 2);
+    }
   });
   
-  // Draw bananas (yellow)
   bananas.forEach(b => {
-    graphics.fillStyle(0xffff00, 0.9);
-    graphics.fillCircle(b.x * gridSize + gridSize/2, b.y * gridSize + gridSize/2, 7);
-    graphics.lineStyle(2, 0xffaa00, 1);
-    graphics.strokeCircle(b.x * gridSize + gridSize/2, b.y * gridSize + gridSize/2, 7);
+    const x = b.x - cameraX;
+    if (x > -50 && x < 850) {
+      graphics.fillStyle(0xffff00, 0.9);
+      graphics.fillCircle(x, b.y, b.r);
+      graphics.lineStyle(2, 0xffaa00, 1);
+      graphics.strokeCircle(x, b.y, b.r);
+    }
   });
   
-  // Draw enemies (red - 400/500)
   enemies.forEach(e => {
-    const color = e.type === 400 ? 0xff6600 : 0xff0000;
-    graphics.fillStyle(color, 0.9);
-    graphics.fillCircle(e.x * gridSize + gridSize/2, e.y * gridSize + gridSize/2, 8);
-    graphics.lineStyle(2, color, 1);
-    graphics.strokeCircle(e.x * gridSize + gridSize/2, e.y * gridSize + gridSize/2, 8);
+    const x = e.x - cameraX;
+    if (x > -50 && x < 850) {
+      e.pulse = (e.pulse || 0) + 0.12;
+      const pulseScale = 1 + Math.sin(e.pulse) * 0.15;
+      const color = e.type === 400 ? 0xff6600 : 0xff0000;
+      
+      graphics.fillStyle(color, 0.25);
+      graphics.fillCircle(x + e.w/2, e.y + e.h/2, e.w * 0.7 * pulseScale);
+      
+      graphics.fillStyle(color, 1);
+      graphics.fillRect(x, e.y, e.w, e.h);
+      graphics.lineStyle(4, 0xffffff, 1);
+      graphics.strokeRect(x, e.y, e.w, e.h);
+      
+      // Draw numbers - clear and large
+      const cx = x + e.w/2;
+      const cy = e.y + e.h/2 - 16;
+      if (e.type === 400) {
+        drawDigit(graphics, cx - 16, cy, '4', 2);
+        drawDigit(graphics, cx - 4, cy, '0', 2);
+        drawDigit(graphics, cx + 8, cy, '0', 2);
+      } else {
+        drawDigit(graphics, cx - 16, cy, '5', 2);
+        drawDigit(graphics, cx - 4, cy, '0', 2);
+        drawDigit(graphics, cx + 8, cy, '0', 2);
+      }
+    }
   });
   
-  // Draw player 1 (monkey - orange)
-  const p1Color = p1Immune ? 0x00ffff : 0xff8800;
-  graphics.fillStyle(p1Color, 1);
-  graphics.fillCircle(p1.x * gridSize + gridSize/2, p1.y * gridSize + gridSize/2, 9);
-  graphics.lineStyle(2, p1Color, 1);
-  graphics.strokeCircle(p1.x * gridSize + gridSize/2, p1.y * gridSize + gridSize/2, 9);
+  if (p1) {
+    const p1Color = p1Immune ? 0x00ffff : 0xffdd00;
+    const cx = p1.x + p1.w/2;
+    const cy = p1.y + p1.h/2;
+    
+    graphics.fillStyle(p1Color, 1);
+    graphics.beginPath();
+    graphics.arc(cx, cy, p1.w/2, 0, Math.PI * 2);
+    graphics.fillPath();
+    
+    graphics.lineStyle(3, 0xffaa00, 1);
+    graphics.beginPath();
+    graphics.arc(cx, cy, p1.w/2, 0, Math.PI * 2);
+    graphics.strokePath();
+    
+    graphics.fillStyle(0xffffaa, 0.6);
+    graphics.fillCircle(cx - 7, cy - 5, 7);
+    
+    graphics.fillStyle(0x000000, 1);
+    graphics.fillCircle(cx - 4, cy - 4, 3);
+    graphics.fillCircle(cx + 4, cy - 4, 3);
+    graphics.fillRect(cx - 2, cy + 2, 4, 2);
+  }
   
-  // Draw player 2 if active
   if (twoPlayer && p2) {
-    const p2Color = p2Immune ? 0x00ffff : 0xff8800;
+    const p2Color = p2Immune ? 0x00ffff : 0x00ff88;
+    const cx2 = p2.x + p2.w/2;
+    const cy2 = p2.y + p2.h/2;
+    
     graphics.fillStyle(p2Color, 1);
-    graphics.fillCircle(p2.x * gridSize + gridSize/2, p2.y * gridSize + gridSize/2, 9);
-    graphics.lineStyle(2, p2Color, 1);
-    graphics.strokeCircle(p2.x * gridSize + gridSize/2, p2.y * gridSize + gridSize/2, 9);
+    graphics.beginPath();
+    graphics.arc(cx2, cy2, p2.w/2, 0, Math.PI * 2);
+    graphics.fillPath();
+    
+    graphics.lineStyle(3, 0x00aa66, 1);
+    graphics.beginPath();
+    graphics.arc(cx2, cy2, p2.w/2, 0, Math.PI * 2);
+    graphics.strokePath();
+    
+    graphics.fillStyle(0x88ffaa, 0.6);
+    graphics.fillCircle(cx2 - 7, cy2 - 5, 7);
+    
+    graphics.fillStyle(0x000000, 1);
+    graphics.fillCircle(cx2 - 4, cy2 - 4, 3);
+    graphics.fillCircle(cx2 + 4, cy2 - 4, 3);
+    graphics.fillRect(cx2 - 2, cy2 + 2, 4, 2);
   }
 }
 
 function endGame(won) {
   gameOver = true;
-  playTone(gameScene, won ? 880 : 220, 0.5);
+  playTone(won ? 880 : 220, 0.5);
   
-  const overlay = gameScene.add.graphics();
+  const overlay = scene.add.graphics();
   overlay.fillStyle(0x000000, 0.8);
   overlay.fillRect(0, 0, 800, 600);
   
   const msg = won ? 'VICTORY!' : 'GAME OVER';
   const color = won ? '#00ff00' : '#ff0000';
-  const text = gameScene.add.text(400, 250, msg, {
+  scene.add.text(400, 250, msg, {
     fontSize: '64px',
     fontFamily: 'Arial',
     color: color,
@@ -437,35 +460,64 @@ function endGame(won) {
     strokeThickness: 8
   }).setOrigin(0.5);
   
-  gameScene.add.text(400, 350, 'Codes Collected: ' + collected + '/' + totalCodes, {
-    fontSize: '32px',
+  const totalCollected = twoPlayer ? (p1Collected + p2Collected) : p1Collected;
+  scene.add.text(400, 330, 'P1: ' + p1Collected + '/' + totalCodes, {
+    fontSize: '28px',
     fontFamily: 'Arial',
     color: '#ffffff'
   }).setOrigin(0.5);
+  if (twoPlayer) {
+    scene.add.text(400, 370, 'P2: ' + p2Collected + '/' + totalCodes, {
+      fontSize: '28px',
+      fontFamily: 'Arial',
+      color: '#ffffff'
+    }).setOrigin(0.5);
+    scene.add.text(400, 410, 'Total: ' + totalCollected + '/' + totalCodes, {
+      fontSize: '24px',
+      fontFamily: 'Arial',
+      color: '#ffff00'
+    }).setOrigin(0.5);
+  }
   
-  gameScene.add.text(400, 400, 'Press R to Restart', {
+  const restartY = twoPlayer ? 450 : 400;
+  scene.add.text(400, restartY, 'Press R to Restart', {
     fontSize: '24px',
     fontFamily: 'Arial',
     color: '#ffff00'
   }).setOrigin(0.5);
   
-  gameScene.input.keyboard.once('keydown-R', () => {
-    collected = 0;
-    timer = 120000;
-    codes = [];
-    enemies = [];
-    bananas = [];
-    walls = [];
-    grid = [];
-    p1Immune = false;
-    p2Immune = false;
-    twoPlayer = false;
-    gameOver = false;
-    gameScene.scene.restart();
+  scene.input.keyboard.once('keydown-R', () => {
+    restartGame();
+    scene.scene.restart();
   });
 }
 
-function playTone(scene, frequency, duration) {
+function restartGame() {
+  p1Collected = 0;
+  p2Collected = 0;
+  timer = 120000;
+  codes = [];
+  enemies = [];
+  bananas = [];
+  p1Immune = false;
+  p2Immune = false;
+  twoPlayer = false;
+  speed = 4;
+  cameraX = 0;
+  lastObstacleX = 600;
+  spawnTimer = 0;
+  codeSpawnTimer = 0;
+  p1Jumping = false;
+  p1JumpVel = 0;
+  p2Jumping = false;
+  p2JumpVel = 0;
+  p1.x = 100;
+  p1.y = groundY;
+  p2 = null;
+  gameOver = false;
+}
+
+function playTone(frequency, duration) {
   const audioContext = scene.sound.context;
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
