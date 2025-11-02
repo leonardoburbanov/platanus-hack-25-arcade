@@ -179,17 +179,14 @@ function update(time, delta) {
   }
   
   if ((p1Immune || (twoPlayer && p2Immune)) && starMusicOsc) {
-    musicTime += delta * 0.005;
-    const step = Math.floor(musicTime * 3) % 6;
-    if (step < 2) {
-      starMusicOsc.frequency.value = 880;
-      if (starMusicOsc2) starMusicOsc2.frequency.value = 523;
-    } else if (step < 4) {
-      starMusicOsc.frequency.value = 1047;
-      if (starMusicOsc2) starMusicOsc2.frequency.value = 659;
+    musicTime += delta * 0.004;
+    const beat = Math.floor(musicTime * 1.5) % 4;
+    if (beat < 2) {
+      starMusicOsc.frequency.value = 330;
+      if (starMusicOsc2) starMusicOsc2.frequency.value = 392;
     } else {
-      starMusicOsc.frequency.value = 1319;
-      if (starMusicOsc2) starMusicOsc2.frequency.value = 784;
+      starMusicOsc.frequency.value = 392;
+      if (starMusicOsc2) starMusicOsc2.frequency.value = 466;
     }
   } else {
     musicTime = 0;
@@ -624,17 +621,17 @@ function playStarMusic() {
   starMusicOsc2 = audioContext.createOscillator();
   starMusicGain = audioContext.createGain();
   
-  starMusicOsc.type = 'triangle';
-  starMusicOsc2.type = 'triangle';
+  starMusicOsc.type = 'sine';
+  starMusicOsc2.type = 'sine';
   
-  starMusicOsc.frequency.value = 880;
-  starMusicOsc2.frequency.value = 523;
+  starMusicOsc.frequency.value = 330;
+  starMusicOsc2.frequency.value = 392;
   
   starMusicOsc.connect(starMusicGain);
   starMusicOsc2.connect(starMusicGain);
   starMusicGain.connect(audioContext.destination);
   
-  starMusicGain.gain.setValueAtTime(0.18, now);
+  starMusicGain.gain.setValueAtTime(0.08, now);
   
   starMusicOsc.start(now);
   starMusicOsc2.start(now);
