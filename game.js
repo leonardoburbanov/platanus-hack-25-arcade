@@ -33,9 +33,15 @@ let bannerText = null, starMusicOsc = null, starMusicGain = null, musicTime = 0,
 function drawDigit(g, x, y, digit, size) {
   const patterns = {
     '0': [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]],
+    '1': [[0,0,1,0,0],[0,1,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[1,1,1,1,1]],
     '2': [[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1]],
+    '3': [[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[1,1,1,1,1]],
     '4': [[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,0,1]],
-    '5': [[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[1,1,1,1,1]]
+    '5': [[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[1,1,1,1,1]],
+    '6': [[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]],
+    '7': [[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,0,1]],
+    '8': [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]],
+    '9': [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[1,1,1,1,1]]
   };
   const p = patterns[digit];
   if (!p) return;
@@ -155,14 +161,18 @@ function create() {
       p2 = { x: 150, y: groundY, w: 35, h: 45 };
       scoreText2.setVisible(true);
         for (let i = 0; i < 5; i++) {
-          codes.push({ x: 400 + i * 150, y: groundY - 50 - Math.random() * 100, r: 18 });
+          const successCodes = [200, 201, 202, 204, 206];
+          const code = successCodes[Math.floor(Math.random() * successCodes.length)];
+          codes.push({ x: 400 + i * 150, y: groundY - 50 - Math.random() * 100, r: 18, code });
         }
       spawnObstacle();
     }
   });
   
   for (let i = 0; i < 5; i++) {
-    codes.push({ x: 400 + i * 150, y: groundY - 50 - Math.random() * 100, r: 18 });
+    const successCodes = [200, 201, 202, 204, 206];
+    const code = successCodes[Math.floor(Math.random() * successCodes.length)];
+    codes.push({ x: 400 + i * 150, y: groundY - 50 - Math.random() * 100, r: 18, code });
   }
   spawnObstacle();
   
@@ -170,26 +180,38 @@ function create() {
 }
 
 function spawnObstacle() {
-  const types = [400, 400, 400, 500, 500];
-  const type = types[Math.floor(Math.random() * types.length)];
-  const gap = 350 + Math.random() * 250;
-  // Different height levels: ground (60%), mid (30%), high (10%)
-  const rand = Math.random();
-  let height;
-  if (rand < 0.6) {
-    height = groundY; // Ground level - most common
-  } else if (rand < 0.9) {
-    height = groundY - 150; // Mid level
-  } else {
-    height = groundY - 280; // High level
+  // More variety of 4xx and 5xx HTTP error codes
+  const types = [400, 401, 403, 404, 408, 409, 410, 413, 414, 418, 429, 431, 500, 501, 502, 503, 504, 505, 507, 508, 510, 511];
+  
+  // Sometimes spawn clusters (30% chance)
+  const isCluster = Math.random() < 0.3;
+  const clusterSize = isCluster ? 2 + Math.floor(Math.random() * 3) : 1; // 2-4 obstacles in cluster
+  
+  for (let i = 0; i < clusterSize; i++) {
+    const gap = isCluster ? (i === 0 ? 350 + Math.random() * 250 : 80 + Math.random() * 100) : 350 + Math.random() * 250;
+    
+    // Different height levels: ground (60%), mid (30%), high (10%)
+    const rand = Math.random();
+    let height;
+    if (rand < 0.6) {
+      height = groundY; // Ground level - most common
+    } else if (rand < 0.9) {
+      height = groundY - 150; // Mid level
+    } else {
+      height = groundY - 280; // High level
+    }
+    
+    enemies.push({ x: lastObstacleX + gap, y: height, type: types[Math.floor(Math.random() * types.length)], w: 45, h: 55, pulse: 0 });
+    lastObstacleX = lastObstacleX + gap;
   }
-  enemies.push({ x: lastObstacleX + gap, y: height, type, w: 45, h: 55, pulse: 0 });
-  lastObstacleX = lastObstacleX + gap;
 }
 
 function spawnCode() {
+  // Variety of 2xx HTTP success codes
+  const successCodes = [200, 201, 202, 204, 206];
+  const code = successCodes[Math.floor(Math.random() * successCodes.length)];
   const y = groundY - 30 - Math.random() * 120;
-  codes.push({ x: cameraX + 500 + Math.random() * 200, y, r: 18 });
+  codes.push({ x: cameraX + 500 + Math.random() * 200, y, r: 18, code });
 }
 
 function update(time, delta) {
@@ -331,7 +353,7 @@ function update(time, delta) {
   }
   
   spawnTimer += delta * speed * 0.5;
-  if (spawnTimer > 200) {
+  if (spawnTimer > 150) {
     spawnTimer = 0;
     spawnObstacle();
   }
@@ -416,12 +438,14 @@ function drawGame() {
       graphics.lineStyle(2, 0x00ff00, 1);
       graphics.strokeCircle(x, c.y, c.r);
       
-      // Draw "200" - clear and large
+      // Draw 2xx code dynamically
+      const code = (c.code || 200).toString();
       const cx = x;
       const cy = c.y - 14;
-      drawDigit(graphics, cx - 16, cy, '2', 2);
-      drawDigit(graphics, cx - 4, cy, '0', 2);
-      drawDigit(graphics, cx + 8, cy, '0', 2);
+      const offset = (code.length === 3 ? -8 : -4);
+      for (let i = 0; i < code.length; i++) {
+        drawDigit(graphics, cx + offset + i * 12, cy, code[i], 2);
+      }
     }
   });
   
@@ -440,7 +464,8 @@ function drawGame() {
     if (x > -50 && x < 850) {
       e.pulse = (e.pulse || 0) + 0.12;
       const pulseScale = 1 + Math.sin(e.pulse) * 0.15;
-      const color = e.type === 400 ? 0xff6600 : 0xff0000;
+      // 4xx codes = orange, 5xx codes = red
+      const color = e.type < 500 ? 0xff6600 : 0xff0000;
       
       graphics.fillStyle(color, 0.25);
       graphics.fillCircle(x + e.w/2, e.y + e.h/2, e.w * 0.7 * pulseScale);
@@ -450,17 +475,13 @@ function drawGame() {
       graphics.lineStyle(4, 0xffffff, 1);
       graphics.strokeRect(x, e.y, e.w, e.h);
       
-      // Draw numbers - clear and large
+      // Draw status code dynamically
+      const code = e.type.toString();
       const cx = x + e.w/2;
       const cy = e.y + e.h/2 - 16;
-      if (e.type === 400) {
-        drawDigit(graphics, cx - 16, cy, '4', 2);
-        drawDigit(graphics, cx - 4, cy, '0', 2);
-        drawDigit(graphics, cx + 8, cy, '0', 2);
-      } else {
-        drawDigit(graphics, cx - 16, cy, '5', 2);
-        drawDigit(graphics, cx - 4, cy, '0', 2);
-        drawDigit(graphics, cx + 8, cy, '0', 2);
+      const offset = (code.length === 3 ? -8 : -4);
+      for (let i = 0; i < code.length; i++) {
+        drawDigit(graphics, cx + offset + i * 12, cy, code[i], 2);
       }
     }
   });
