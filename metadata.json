@@ -1,4 +1,4 @@
 {
-  "game_name": "<FILL THIS>",
-  "description": "<FILL THIS>"
+  "game_name": "HTTP Monkey: Debug the Maze",
+  "description": "In a neon digital maze, 1 or 2 hacker monkeys race against time to collect all the 200 codes — representing successful requests — while dodging the evil 400 and 500 codes that chase them around the network. Collect bananas to gain temporary immunity, allowing you to \"debug\" the error codes on contact. Single Player: One hacker monkey vs. waves of bugs (400 & 500). Two Players: Cooperative play — both monkeys share the timer and score but can cover more maze ground together."
 }
