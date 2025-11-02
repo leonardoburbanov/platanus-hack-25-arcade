@@ -23,8 +23,8 @@ let immuneTimer1 = 0, immuneTimer2 = 0;
 let p1Alive = true, p2Alive = true;
 let speed = 4, groundY = 500;
 let spawnTimer = 0, codeSpawnTimer = 0;
-let p1Jumping = false, p1JumpVel = 0;
-let p2Jumping = false, p2JumpVel = 0;
+let p1Jumping = false, p1JumpVel = 0, p1DoubleJumpUsed = false;
+let p2Jumping = false, p2JumpVel = 0, p2DoubleJumpUsed = false;
 let cameraX = 0, lastObstacleX = 600;
 let cursors, wasd, spaceKey;
 let bannerText = null, starMusicOsc = null, starMusicGain = null, musicTime = 0, starMusicOsc2 = null;
@@ -95,6 +95,36 @@ function create() {
   wasd = this.input.keyboard.addKeys('W,S,A,D');
   spaceKey = this.input.keyboard.addKey('SPACE');
   
+  cursors.up.on('down', () => {
+    if (p1Alive && !gameOver) {
+      if (!p1Jumping && p1.y >= groundY) {
+        p1Jumping = true;
+        p1JumpVel = -13;
+        p1DoubleJumpUsed = false;
+        playTone(300, 0.1);
+      } else if (p1Jumping && p1.y < groundY && !p1DoubleJumpUsed && p1.y < groundY - 10) {
+        p1JumpVel = -13;
+        p1DoubleJumpUsed = true;
+        playTone(350, 0.1);
+      }
+    }
+  });
+  
+  wasd.W.on('down', () => {
+    if (twoPlayer && p2 && p2Alive && !gameOver) {
+      if (!p2Jumping && p2.y >= groundY) {
+        p2Jumping = true;
+        p2JumpVel = -13;
+        p2DoubleJumpUsed = false;
+        playTone(300, 0.1);
+      } else if (p2Jumping && p2.y < groundY && !p2DoubleJumpUsed && p2.y < groundY - 10) {
+        p2JumpVel = -13;
+        p2DoubleJumpUsed = true;
+        playTone(350, 0.1);
+      }
+    }
+  });
+  
   this.input.keyboard.on('keydown-SPACE', () => {
     if (!gameOver && !twoPlayer) {
       p1Collected = 0;
@@ -115,8 +145,10 @@ function create() {
       codeSpawnTimer = 0;
       p1Jumping = false;
       p1JumpVel = 0;
+      p1DoubleJumpUsed = false;
       p2Jumping = false;
       p2JumpVel = 0;
+      p2DoubleJumpUsed = false;
       p1.x = 100;
       p1.y = groundY;
       twoPlayer = true;
@@ -141,7 +173,10 @@ function spawnObstacle() {
   const types = [400, 400, 400, 500, 500];
   const type = types[Math.floor(Math.random() * types.length)];
   const gap = 350 + Math.random() * 250;
-  enemies.push({ x: lastObstacleX + gap, y: groundY, type, w: 45, h: 55, pulse: 0 });
+  // Different height levels: ground, mid, high
+  const heights = [groundY, groundY - 150, groundY - 280];
+  const height = heights[Math.floor(Math.random() * heights.length)];
+  enemies.push({ x: lastObstacleX + gap, y: height, type, w: 45, h: 55, pulse: 0 });
   lastObstacleX = lastObstacleX + gap;
 }
 
@@ -193,12 +228,6 @@ function update(time, delta) {
   }
   
   if (p1Alive) {
-    if (cursors.up.isDown && !p1Jumping && p1.y >= groundY) {
-      p1Jumping = true;
-      p1JumpVel = -13;
-      playTone(300, 0.1);
-    }
-    
     if (p1Jumping || p1.y < groundY) {
       p1.y += p1JumpVel;
       p1JumpVel += 0.55;
@@ -207,17 +236,12 @@ function update(time, delta) {
         p1.y = groundY;
         p1Jumping = false;
         p1JumpVel = 0;
+        p1DoubleJumpUsed = false;
       }
     }
   }
   
   if (twoPlayer && p2 && p2Alive) {
-    if (wasd.W.isDown && !p2Jumping && p2.y >= groundY) {
-      p2Jumping = true;
-      p2JumpVel = -13;
-      playTone(300, 0.1);
-    }
-    
     if (p2Jumping || p2.y < groundY) {
       p2.y += p2JumpVel;
       p2JumpVel += 0.55;
@@ -226,6 +250,7 @@ function update(time, delta) {
         p2.y = groundY;
         p2Jumping = false;
         p2JumpVel = 0;
+        p2DoubleJumpUsed = false;
       }
     }
     
@@ -558,8 +583,10 @@ function restartGame() {
   codeSpawnTimer = 0;
   p1Jumping = false;
   p1JumpVel = 0;
+  p1DoubleJumpUsed = false;
   p2Jumping = false;
   p2JumpVel = 0;
+  p2DoubleJumpUsed = false;
   p1.x = 100;
   p1.y = groundY;
   p2 = null;
