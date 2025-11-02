@@ -1,5 +1,5 @@
 // HTTP Monkey: Debug the Maze
-// Side-scrolling runner - banana collects 200 codes, dodges 400/500 errors
+// Side-scrolling runner - collect codes and destroy 400/500 errors for unlimited points
 
 const config = {
   type: Phaser.AUTO,
@@ -15,7 +15,7 @@ const config = {
 const game = new Phaser.Game(config);
 
 let p1, p2, codes = [], enemies = [], bananas = [];
-let p1Collected = 0, p2Collected = 0, totalCodes = 200, timer = 120000;
+let p1Collected = 0, p2Collected = 0, p1Points = 0, p2Points = 0, timer = 120000;
 let timerText, scoreText1, scoreText2, gameOver = false;
 let graphics, scene, twoPlayer = false;
 let p1Immune = false, p2Immune = false;
@@ -70,13 +70,13 @@ function create() {
     color: '#00ffff'
   });
   
-  scoreText1 = this.add.text(10, 35, 'P1: 0/200', {
+  scoreText1 = this.add.text(10, 35, 'P1: 0', {
     fontSize: '20px',
     fontFamily: 'Arial',
     color: '#00ff00'
   });
   
-  scoreText2 = this.add.text(10, 60, 'P2: 0/200', {
+  scoreText2 = this.add.text(10, 60, 'P2: 0', {
     fontSize: '20px',
     fontFamily: 'Arial',
     color: '#00aa00',
@@ -97,6 +97,8 @@ function create() {
     if (!gameOver && !twoPlayer) {
       p1Collected = 0;
       p2Collected = 0;
+      p1Points = 0;
+      p2Points = 0;
       timer = 120000;
       codes = [];
       enemies = [];
@@ -153,12 +155,6 @@ function update(time, delta) {
     return;
   }
   
-  const totalCollected = twoPlayer ? (p1Collected + p2Collected) : p1Collected;
-  if (totalCollected >= totalCodes) {
-    endGame(true);
-    return;
-  }
-  
   cameraX += speed;
   
   if (p1Immune) {
@@ -207,7 +203,7 @@ function update(time, delta) {
     
     codes = codes.filter(c => {
       if (Math.abs(p2.x - (c.x - cameraX)) < 25 && Math.abs(p2.y - c.y) < 25) {
-        p2Collected++;
+        p2Collected += 200;
         playTone(600, 0.1);
         return false;
       }
@@ -238,6 +234,7 @@ function update(time, delta) {
         if (ex < p2.x + p2.w && ex + e.w > p2.x && e.y < p2.y + p2.h && e.y + e.h > p2.y) {
           const idx = enemies.indexOf(e);
           if (idx >= 0) {
+            p2Points += e.type;
             enemies.splice(idx, 1);
             playTone(400, 0.2);
           }
@@ -248,7 +245,7 @@ function update(time, delta) {
   
   codes = codes.filter(c => {
     if (Math.abs(p1.x - (c.x - cameraX)) < 25 && Math.abs(p1.y - c.y) < 25) {
-      p1Collected++;
+      p1Collected += 200;
       playTone(600, 0.1);
       return false;
     }
@@ -298,6 +295,7 @@ function update(time, delta) {
       if (ex < p1.x + p1.w && ex + e.w > p1.x && e.y < p1.y + p1.h && e.y + e.h > p1.y) {
         const idx = enemies.indexOf(e);
         if (idx >= 0) {
+          p1Points += e.type;
           enemies.splice(idx, 1);
           playTone(400, 0.2);
         }
@@ -309,9 +307,9 @@ function update(time, delta) {
   codes = codes.filter(c => c.x - cameraX > -100);
   
   timerText.setText('Time: ' + Math.ceil(timer / 1000));
-  scoreText1.setText('P1: ' + p1Collected + '/' + totalCodes);
+  scoreText1.setText('P1: ' + (p1Collected + p1Points));
   if (twoPlayer) {
-    scoreText2.setText('P2: ' + p2Collected + '/' + totalCodes);
+    scoreText2.setText('P2: ' + (p2Collected + p2Points));
   }
   
   drawGame();
@@ -460,19 +458,20 @@ function endGame(won) {
     strokeThickness: 8
   }).setOrigin(0.5);
   
-  const totalCollected = twoPlayer ? (p1Collected + p2Collected) : p1Collected;
-  scene.add.text(400, 330, 'P1: ' + p1Collected + '/' + totalCodes, {
+  const p1Total = p1Collected + p1Points;
+  const p2Total = p2Collected + p2Points;
+  scene.add.text(400, 330, 'P1: ' + p1Total, {
     fontSize: '28px',
     fontFamily: 'Arial',
     color: '#ffffff'
   }).setOrigin(0.5);
   if (twoPlayer) {
-    scene.add.text(400, 370, 'P2: ' + p2Collected + '/' + totalCodes, {
+    scene.add.text(400, 370, 'P2: ' + p2Total, {
       fontSize: '28px',
       fontFamily: 'Arial',
       color: '#ffffff'
     }).setOrigin(0.5);
-    scene.add.text(400, 410, 'Total: ' + totalCollected + '/' + totalCodes, {
+    scene.add.text(400, 410, 'Total: ' + (p1Total + p2Total), {
       fontSize: '24px',
       fontFamily: 'Arial',
       color: '#ffff00'
@@ -495,6 +494,8 @@ function endGame(won) {
 function restartGame() {
   p1Collected = 0;
   p2Collected = 0;
+  p1Points = 0;
+  p2Points = 0;
   timer = 120000;
   codes = [];
   enemies = [];
