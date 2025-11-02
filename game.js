@@ -447,17 +447,30 @@ function update(time, delta) {
     const bananaY = groundY - 25;
     let bananaSprite = null;
     
-    // Create sprite if image is loaded
+    // Create sprite if image is loaded - use screen coordinates
     if (scene.textures.exists(bananaImageKey)) {
-      bananaSprite = scene.add.image(bananaX, bananaY, bananaImageKey);
-      bananaSprite.setDisplaySize(25, 25);
+      const screenX = bananaX - cameraX;
+      bananaSprite = scene.add.image(screenX, bananaY, bananaImageKey);
+      bananaSprite.setDisplaySize(50, 50);
       bananaSprite.setVisible(false);
     }
     
     bananas.push({ x: bananaX, y: bananaY, r: 10, t: 0, sprite: bananaSprite });
   }
   
-  bananas.forEach(b => b.t += delta);
+  bananas.forEach(b => {
+    b.t += delta;
+    // Update sprite position relative to camera
+    if (b.sprite && scene.textures.exists(bananaImageKey)) {
+      const screenX = b.x - cameraX;
+      if (screenX > -50 && screenX < 850) {
+        b.sprite.setPosition(screenX, b.y);
+        b.sprite.setVisible(true);
+      } else {
+        b.sprite.setVisible(false);
+      }
+    }
+  });
   bananas = bananas.filter(b => {
     if (b.t >= 15000) {
       if (b.sprite) {
@@ -547,16 +560,8 @@ function drawGame() {
   });
   
   bananas.forEach(b => {
-    if (b.sprite && scene.textures.exists(bananaImageKey)) {
-      const x = b.x - cameraX;
-      if (x > -50 && x < 850) {
-        b.sprite.setPosition(x, b.y);
-        b.sprite.setVisible(true);
-      } else {
-        b.sprite.setVisible(false);
-      }
-    } else {
-      // Fallback: draw yellow circle if image not available
+    // Only draw fallback if sprite not available
+    if (!b.sprite || !scene.textures.exists(bananaImageKey)) {
       const x = b.x - cameraX;
       if (x > -50 && x < 850) {
         graphics.fillStyle(0xffff00, 0.9);
@@ -565,6 +570,7 @@ function drawGame() {
         graphics.strokeCircle(x, b.y, b.r);
       }
     }
+    // Sprite position is updated in update() function
   });
   
   enemies.forEach(e => {
