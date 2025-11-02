@@ -27,6 +27,7 @@ let p1Jumping = false, p1JumpVel = 0;
 let p2Jumping = false, p2JumpVel = 0;
 let cameraX = 0, lastObstacleX = 600;
 let cursors, wasd, spaceKey;
+let bannerText = null, starMusicOsc = null, starMusicGain = null, musicTime = 0;
 
 // Simple digit patterns - 5x7 grid, bold and clear
 function drawDigit(g, x, y, digit, size) {
@@ -162,11 +163,26 @@ function update(time, delta) {
   
   if (p1Immune) {
     immuneTimer1 -= delta;
-    if (immuneTimer1 <= 0) p1Immune = false;
+    if (immuneTimer1 <= 0) {
+      p1Immune = false;
+      if (bannerText) bannerText.setVisible(false);
+      stopStarMusic();
+    }
   }
   if (p2Immune && twoPlayer) {
     immuneTimer2 -= delta;
-    if (immuneTimer2 <= 0) p2Immune = false;
+    if (immuneTimer2 <= 0) {
+      p2Immune = false;
+      if (bannerText) bannerText.setVisible(false);
+      stopStarMusic();
+    }
+  }
+  
+  if ((p1Immune || (twoPlayer && p2Immune)) && starMusicOsc) {
+    musicTime += delta * 0.001;
+    starMusicOsc.frequency.value = 660 + Math.sin(musicTime * 3.14159) * 30;
+  } else {
+    musicTime = 0;
   }
   
   if (p1Alive) {
@@ -219,7 +235,8 @@ function update(time, delta) {
       if (Math.abs(p2.x - (b.x - cameraX)) < 25 && Math.abs(p2.y - b.y) < 25) {
         p2Immune = true;
         immuneTimer2 = 5000;
-        playTone(800, 0.15);
+        showBanner();
+        playStarMusic();
         return false;
       }
       return true;
@@ -266,7 +283,8 @@ function update(time, delta) {
       if (Math.abs(p1.x - (b.x - cameraX)) < 25 && Math.abs(p1.y - b.y) < 25) {
         p1Immune = true;
         immuneTimer1 = 5000;
-        playTone(800, 0.15);
+        showBanner();
+        playStarMusic();
         return false;
       }
       return true;
@@ -539,6 +557,9 @@ function restartGame() {
   p1.y = groundY;
   p2 = null;
   gameOver = false;
+  if (bannerText) bannerText.setVisible(false);
+  stopStarMusic();
+  musicTime = 0;
 }
 
 function playTone(frequency, duration) {
@@ -557,4 +578,54 @@ function playTone(frequency, duration) {
   
   oscillator.start(audioContext.currentTime);
   oscillator.stop(audioContext.currentTime + duration);
+}
+
+function showBanner() {
+  if (bannerText) {
+    bannerText.setVisible(true);
+    return;
+  }
+  
+  bannerText = scene.add.text(400, 150, 'PLATANUS HACK MODE', {
+    fontSize: '48px',
+    fontFamily: 'Arial',
+    color: '#ffff00',
+    stroke: '#000000',
+    strokeThickness: 6,
+    fontWeight: 'bold'
+  }).setOrigin(0.5).setVisible(true);
+  
+  scene.tweens.add({
+    targets: bannerText,
+    alpha: { from: 1, to: 0.3 },
+    duration: 200,
+    yoyo: true,
+    repeat: -1
+  });
+}
+
+function playStarMusic() {
+  if (starMusicOsc) return;
+  
+  const audioContext = scene.sound.context;
+  starMusicOsc = audioContext.createOscillator();
+  starMusicGain = audioContext.createGain();
+  
+  starMusicOsc.connect(starMusicGain);
+  starMusicGain.connect(audioContext.destination);
+  
+  starMusicOsc.type = 'sine';
+  starMusicOsc.frequency.value = 660;
+  
+  starMusicGain.gain.setValueAtTime(0.12, audioContext.currentTime);
+  
+  starMusicOsc.start(audioContext.currentTime);
+}
+
+function stopStarMusic() {
+  if (starMusicOsc) {
+    starMusicOsc.stop();
+    starMusicOsc = null;
+    starMusicGain = null;
+  }
 }
