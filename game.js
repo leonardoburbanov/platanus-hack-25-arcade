@@ -23,6 +23,7 @@ let immuneTimer1 = 0, immuneTimer2 = 0;
 let p1Alive = true, p2Alive = true;
 let speed = 4, groundY = 500;
 let spawnTimer = 0, codeSpawnTimer = 0;
+let difficulty = 1, gameTime = 0;
 let p1Jumping = false, p1JumpVel = 0, p1DoubleJumpUsed = false;
 let p2Jumping = false, p2JumpVel = 0, p2DoubleJumpUsed = false;
 let cameraX = 0, lastObstacleX = 600;
@@ -149,6 +150,9 @@ function create() {
       lastObstacleX = 600;
       spawnTimer = 0;
       codeSpawnTimer = 0;
+      difficulty = 1;
+      gameTime = 0;
+      speed = 4;
       p1Jumping = false;
       p1JumpVel = 0;
       p1DoubleJumpUsed = false;
@@ -183,26 +187,76 @@ function spawnObstacle() {
   // More variety of 4xx and 5xx HTTP error codes
   const types = [400, 401, 403, 404, 408, 409, 410, 413, 414, 418, 429, 431, 500, 501, 502, 503, 504, 505, 507, 508, 510, 511];
   
-  // Sometimes spawn clusters (30% chance)
-  const isCluster = Math.random() < 0.3;
-  const clusterSize = isCluster ? 2 + Math.floor(Math.random() * 3) : 1; // 2-4 obstacles in cluster
+  // Pattern selection based on difficulty
+  const patternRoll = Math.random();
+  let pattern;
   
-  for (let i = 0; i < clusterSize; i++) {
-    const gap = isCluster ? (i === 0 ? 350 + Math.random() * 250 : 80 + Math.random() * 100) : 350 + Math.random() * 250;
-    
-    // Different height levels: ground (60%), mid (30%), high (10%)
+  if (difficulty >= 3 && patternRoll < 0.15) {
+    pattern = 'wave'; // Wave pattern
+  } else if (difficulty >= 2 && patternRoll < 0.25) {
+    pattern = 'wall'; // Vertical wall
+  } else if (difficulty >= 2 && patternRoll < 0.4) {
+    pattern = 'alternating'; // Alternating heights
+  } else if (patternRoll < 0.3 + (difficulty * 0.1)) {
+    pattern = 'cluster'; // Cluster
+  } else {
+    pattern = 'single'; // Single obstacle
+  }
+  
+  if (pattern === 'wave') {
+    // Wave pattern: obstacles moving up and down
+    const waveCount = 3 + Math.floor(difficulty);
+    for (let i = 0; i < waveCount; i++) {
+      const wavePhase = (i / waveCount) * Math.PI * 2;
+      const height = groundY - 100 + Math.sin(wavePhase) * 80;
+      enemies.push({ x: lastObstacleX + i * 100, y: height, type: types[Math.floor(Math.random() * types.length)], w: 45, h: 55, pulse: 0 });
+    }
+    lastObstacleX += waveCount * 100;
+  } else if (pattern === 'wall') {
+    // Vertical wall: obstacles at multiple heights
+    const wallHeights = [groundY, groundY - 150, groundY - 280];
+    for (let h of wallHeights) {
+      enemies.push({ x: lastObstacleX + 50, y: h, type: types[Math.floor(Math.random() * types.length)], w: 45, h: 55, pulse: 0 });
+    }
+    lastObstacleX += 200;
+  } else if (pattern === 'alternating') {
+    // Alternating pattern: low-high-low-high
+    const altCount = 3 + Math.floor(difficulty * 0.5);
+    for (let i = 0; i < altCount; i++) {
+      const height = (i % 2 === 0) ? groundY : (groundY - 200);
+      enemies.push({ x: lastObstacleX + i * 120, y: height, type: types[Math.floor(Math.random() * types.length)], w: 45, h: 55, pulse: 0 });
+    }
+    lastObstacleX += altCount * 120;
+  } else if (pattern === 'cluster') {
+    // Cluster pattern
+    const clusterSize = 2 + Math.floor(Math.random() * (2 + difficulty));
+    for (let i = 0; i < clusterSize; i++) {
+      const gap = i === 0 ? 350 + Math.random() * 250 : 60 + Math.random() * 80;
+      const rand = Math.random();
+      let height;
+      if (rand < 0.6) {
+        height = groundY;
+      } else if (rand < 0.9) {
+        height = groundY - 150;
+      } else {
+        height = groundY - 280;
+      }
+      enemies.push({ x: lastObstacleX + gap, y: height, type: types[Math.floor(Math.random() * types.length)], w: 45, h: 55, pulse: 0 });
+      lastObstacleX = lastObstacleX + gap;
+    }
+  } else {
+    // Single obstacle
     const rand = Math.random();
     let height;
     if (rand < 0.6) {
-      height = groundY; // Ground level - most common
+      height = groundY;
     } else if (rand < 0.9) {
-      height = groundY - 150; // Mid level
+      height = groundY - 150;
     } else {
-      height = groundY - 280; // High level
+      height = groundY - 280;
     }
-    
-    enemies.push({ x: lastObstacleX + gap, y: height, type: types[Math.floor(Math.random() * types.length)], w: 45, h: 55, pulse: 0 });
-    lastObstacleX = lastObstacleX + gap;
+    enemies.push({ x: lastObstacleX + 350 + Math.random() * 250, y: height, type: types[Math.floor(Math.random() * types.length)], w: 45, h: 55, pulse: 0 });
+    lastObstacleX = lastObstacleX + 350 + Math.random() * 250;
   }
 }
 
@@ -223,6 +277,10 @@ function update(time, delta) {
     return;
   }
   
+  // Progressive difficulty system
+  gameTime += delta;
+  difficulty = 1 + Math.floor(gameTime / 30000); // Increase difficulty every 30 seconds
+  speed = 4 + (difficulty - 1) * 0.5; // Speed increases with difficulty
   cameraX += speed;
   
   if (p1Immune) {
@@ -352,8 +410,11 @@ function update(time, delta) {
     });
   }
   
+  // Spawn rate increases with difficulty
+  const baseSpawnRate = 150 - (difficulty - 1) * 15;
+  const minSpawnRate = 80;
   spawnTimer += delta * speed * 0.5;
-  if (spawnTimer > 150) {
+  if (spawnTimer > Math.max(baseSpawnRate, minSpawnRate)) {
     spawnTimer = 0;
     spawnObstacle();
   }
@@ -605,6 +666,8 @@ function restartGame() {
   p2Alive = true;
   twoPlayer = false;
   speed = 4;
+  difficulty = 1;
+  gameTime = 0;
   cameraX = 0;
   lastObstacleX = 600;
   spawnTimer = 0;
