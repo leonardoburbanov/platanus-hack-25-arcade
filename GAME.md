@@ -1,4 +1,4 @@
-# HTTP Monkey: Debug the Maze
+# HTTP Monkey: Error Runner
 
 ## Game Overview
 
@@ -331,6 +331,17 @@ Press **R** key on game over screen to restart:
 ## Credits
 
 Created for **Platanus Hack 25: Arcade Challenge**
+
+### Author
+
+**Leonardo Burbano**  
+🚀 Tech Lead | Senior AI & Machine Learning Engineer
+
+Turning complex AI workflows into simple, reliable, scalable solutions.
+
+- 🌐 [leonardoburbano.com](https://leonardoburbano.com/)
+- 🔗 [LinkedIn](https://www.linkedin.com/in/leoburbano/)
+- 📍 Based in Latin America (Ecuador)
 
 ---
 
