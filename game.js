@@ -27,7 +27,7 @@ let p1Jumping = false, p1JumpVel = 0;
 let p2Jumping = false, p2JumpVel = 0;
 let cameraX = 0, lastObstacleX = 600;
 let cursors, wasd, spaceKey;
-let bannerText = null, starMusicOsc = null, starMusicGain = null, musicTime = 0;
+let bannerText = null, starMusicOsc = null, starMusicGain = null, musicTime = 0, starMusicOsc2 = null;
 
 // Simple digit patterns - 5x7 grid, bold and clear
 function drawDigit(g, x, y, digit, size) {
@@ -179,8 +179,18 @@ function update(time, delta) {
   }
   
   if ((p1Immune || (twoPlayer && p2Immune)) && starMusicOsc) {
-    musicTime += delta * 0.001;
-    starMusicOsc.frequency.value = 660 + Math.sin(musicTime * 3.14159) * 30;
+    musicTime += delta * 0.005;
+    const step = Math.floor(musicTime * 3) % 6;
+    if (step < 2) {
+      starMusicOsc.frequency.value = 880;
+      if (starMusicOsc2) starMusicOsc2.frequency.value = 523;
+    } else if (step < 4) {
+      starMusicOsc.frequency.value = 1047;
+      if (starMusicOsc2) starMusicOsc2.frequency.value = 659;
+    } else {
+      starMusicOsc.frequency.value = 1319;
+      if (starMusicOsc2) starMusicOsc2.frequency.value = 784;
+    }
   } else {
     musicTime = 0;
   }
@@ -608,24 +618,36 @@ function playStarMusic() {
   if (starMusicOsc) return;
   
   const audioContext = scene.sound.context;
+  const now = audioContext.currentTime;
+  
   starMusicOsc = audioContext.createOscillator();
+  starMusicOsc2 = audioContext.createOscillator();
   starMusicGain = audioContext.createGain();
   
+  starMusicOsc.type = 'triangle';
+  starMusicOsc2.type = 'triangle';
+  
+  starMusicOsc.frequency.value = 880;
+  starMusicOsc2.frequency.value = 523;
+  
   starMusicOsc.connect(starMusicGain);
+  starMusicOsc2.connect(starMusicGain);
   starMusicGain.connect(audioContext.destination);
   
-  starMusicOsc.type = 'sine';
-  starMusicOsc.frequency.value = 660;
+  starMusicGain.gain.setValueAtTime(0.18, now);
   
-  starMusicGain.gain.setValueAtTime(0.12, audioContext.currentTime);
-  
-  starMusicOsc.start(audioContext.currentTime);
+  starMusicOsc.start(now);
+  starMusicOsc2.start(now);
 }
 
 function stopStarMusic() {
   if (starMusicOsc) {
     starMusicOsc.stop();
     starMusicOsc = null;
-    starMusicGain = null;
   }
+  if (starMusicOsc2) {
+    starMusicOsc2.stop();
+    starMusicOsc2 = null;
+  }
+  starMusicGain = null;
 }
