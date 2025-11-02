@@ -7,6 +7,7 @@ const config = {
   height: 600,
   backgroundColor: '#0a0a1a',
   scene: {
+    preload: preload,
     create: create,
     update: update
   }
@@ -29,6 +30,16 @@ let p2Jumping = false, p2JumpVel = 0, p2DoubleJumpUsed = false;
 let cameraX = 0, lastObstacleX = 600;
 let cursors, wasd, spaceKey;
 let bannerText = null, starMusicOsc = null, starMusicGain = null, musicTime = 0, starMusicOsc2 = null;
+
+// Banana image loaded from base64
+let bananaImageKey = 'banana';
+
+function preload() {
+  // Load banana image from base64 if available
+  if (typeof bananas_logo_base_64 !== 'undefined') {
+    this.load.image(bananaImageKey, bananas_logo_base_64);
+  }
+}
 
 // Simple digit patterns - 5x7 grid, bold and clear
 function drawDigit(g, x, y, digit, size) {
@@ -352,6 +363,9 @@ function update(time, delta) {
     
     bananas = bananas.filter(b => {
       if (Math.abs(p2.x - (b.x - cameraX)) < 25 && Math.abs(p2.y - b.y) < 25) {
+        if (b.sprite) {
+          b.sprite.destroy();
+        }
         p2Immune = true;
         immuneTimer2 = 5000;
         showBanner();
@@ -400,6 +414,9 @@ function update(time, delta) {
     
     bananas = bananas.filter(b => {
       if (Math.abs(p1.x - (b.x - cameraX)) < 25 && Math.abs(p1.y - b.y) < 25) {
+        if (b.sprite) {
+          b.sprite.destroy();
+        }
         p1Immune = true;
         immuneTimer1 = 5000;
         showBanner();
@@ -426,11 +443,30 @@ function update(time, delta) {
   }
   
   if (Math.random() < 0.006 && bananas.length < 5) {
-    bananas.push({ x: cameraX + 900, y: groundY - 25, r: 10, t: 0 });
+    const bananaX = cameraX + 900;
+    const bananaY = groundY - 25;
+    let bananaSprite = null;
+    
+    // Create sprite if image is loaded
+    if (scene.textures.exists(bananaImageKey)) {
+      bananaSprite = scene.add.image(bananaX, bananaY, bananaImageKey);
+      bananaSprite.setDisplaySize(25, 25);
+      bananaSprite.setVisible(false);
+    }
+    
+    bananas.push({ x: bananaX, y: bananaY, r: 10, t: 0, sprite: bananaSprite });
   }
   
   bananas.forEach(b => b.t += delta);
-  bananas = bananas.filter(b => b.t < 15000);
+  bananas = bananas.filter(b => {
+    if (b.t >= 15000) {
+      if (b.sprite) {
+        b.sprite.destroy();
+      }
+      return false;
+    }
+    return true;
+  });
   
   if (p1Alive) {
     if (!p1Immune) {
@@ -511,12 +547,23 @@ function drawGame() {
   });
   
   bananas.forEach(b => {
-    const x = b.x - cameraX;
-    if (x > -50 && x < 850) {
-      graphics.fillStyle(0xffff00, 0.9);
-      graphics.fillCircle(x, b.y, b.r);
-      graphics.lineStyle(2, 0xffaa00, 1);
-      graphics.strokeCircle(x, b.y, b.r);
+    if (b.sprite && scene.textures.exists(bananaImageKey)) {
+      const x = b.x - cameraX;
+      if (x > -50 && x < 850) {
+        b.sprite.setPosition(x, b.y);
+        b.sprite.setVisible(true);
+      } else {
+        b.sprite.setVisible(false);
+      }
+    } else {
+      // Fallback: draw yellow circle if image not available
+      const x = b.x - cameraX;
+      if (x > -50 && x < 850) {
+        graphics.fillStyle(0xffff00, 0.9);
+        graphics.fillCircle(x, b.y, b.r);
+        graphics.lineStyle(2, 0xffaa00, 1);
+        graphics.strokeCircle(x, b.y, b.r);
+      }
     }
   });
   
