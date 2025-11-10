@@ -204,13 +204,13 @@ function create() {
   scoreText1 = this.add.text(10, 35, 'P1: 0', {
     fontSize: '20px',
     fontFamily: 'Arial',
-    color: '#00ff00'
+    color: '#ffa500'  // Orange to match P1 monkey
   });
   
   scoreText2 = this.add.text(10, 60, 'P2: 0', {
     fontSize: '20px',
     fontFamily: 'Arial',
-    color: '#00aa00',
+    color: '#00ff88',  // Bright green/teal to match P2 monkey
     visible: false
   });
   
@@ -711,13 +711,13 @@ function endGame(won) {
   scene.add.text(400, 330, 'P1: ' + p1Total, {
     fontSize: '28px',
     fontFamily: 'Arial',
-    color: '#ffffff'
+    color: '#ffa500'  // Orange to match P1 monkey
   }).setOrigin(0.5);
   if (twoPlayer) {
     scene.add.text(400, 370, 'P2: ' + p2Total, {
       fontSize: '28px',
       fontFamily: 'Arial',
-      color: '#ffffff'
+      color: '#00ff88'  // Bright green/teal to match P2 monkey
     }).setOrigin(0.5);
     scene.add.text(400, 410, 'Total: ' + (p1Total + p2Total), {
       fontSize: '24px',
