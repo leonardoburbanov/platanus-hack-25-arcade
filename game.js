@@ -31,14 +31,8 @@ let cameraX = 0, lastObstacleX = 600;
 let cursors, wasd, spaceKey;
 let bannerText = null, starMusicOsc = null, starMusicGain = null, musicTime = 0, starMusicOsc2 = null;
 
-// Banana image loaded from base64
-let bananaImageKey = 'banana';
-
 function preload() {
-  // Load banana image from base64 if available
-  if (typeof bananas_logo_base_64 !== 'undefined') {
-    this.load.image(bananaImageKey, bananas_logo_base_64);
-  }
+  // No assets to preload - using procedural 8-bit graphics
 }
 
 // Simple digit patterns - 5x7 grid, bold and clear
@@ -74,6 +68,128 @@ function drawDigit(g, x, y, digit, size) {
         g.fillRect(x + col * size, y + row * size, size, size);
       }
     }
+  }
+}
+
+// Draw 8-bit style banana sprite - matches reference design
+function drawBanana8bit(g, x, y, size) {
+  const px = size / 10;
+  const py = size / 14;
+  
+  // 10x14 banana - crescent shape, stem at top-left, curves to bottom-right
+  // Progressive shift right in middle creates the curve
+  const sprite = [
+    [3,3,0,0,0,0,0,0,0,0], // stem top (2x2 brown at top-left)
+    [3,3,0,0,0,0,0,0,0,0], // stem bottom
+    [1,2,2,1,0,0,0,0,0,0], // top - connects to stem, narrow
+    [0,1,2,2,2,1,0,0,0,0], // widening - shift right 1
+    [0,0,1,2,2,2,2,1,0,0], // wider - shift right 1
+    [0,0,0,1,2,2,2,2,2,1], // wide - shift right 1
+    [0,0,0,0,1,2,2,2,2,2], // widest - shift right 1, max curve
+    [0,0,0,0,0,1,2,2,2,2], // still wide - shift right 1
+    [0,0,0,0,0,0,1,2,2,2], // narrowing - shift right 1
+    [0,0,0,0,0,0,0,1,2,2], // more narrow - shift right 1
+    [0,0,0,0,0,0,0,0,1,2], // tapering - shift right 1
+    [0,0,0,0,0,0,0,0,0,1], // tip - shift right 1
+    [0,0,0,0,0,0,0,0,0,1], // tip - same
+    [0,0,0,0,0,0,0,0,0,1]  // tip end
+  ];
+  
+  const colors = {
+    0: null,
+    1: 0xffaa00, // orange-yellow outline/shading
+    2: 0xffff00, // bright yellow body
+    3: 0x8b4513  // dark brown stem
+  };
+  
+  // Draw single continuous banana
+  for (let row = 0; row < 14; row++) {
+    for (let col = 0; col < 10; col++) {
+      const val = sprite[row][col];
+      if (val && colors[val]) {
+        g.fillStyle(colors[val], 1);
+        g.fillRect(x + col * px, y + row * py, px, py);
+      }
+    }
+  }
+}
+
+// Draw 8-bit style monkey sprite using pixel-based rectangles
+// Colors: 0=transparent, 1=dark, 2=medium, 3=light, 4=black, 5=white
+// playerNum: 1 for P1 (orange/yellow), 2 for P2 (green/teal)
+function drawMonkey8bit(g, x, y, w, h, alive, immune, playerNum) {
+  const px = w / 8; // Pixel size based on width
+  const py = h / 10; // Pixel size based on height
+  // 8x10 pixel monkey sprite: head with ears, face, body, legs
+  const sprite = [
+    [0,0,0,1,1,0,0,0], // top ears
+    [0,0,1,2,2,1,0,0], // ears
+    [0,1,2,2,2,2,1,0], // head top
+    [1,2,2,3,3,2,2,1], // face
+    [1,2,4,3,3,4,2,1], // eyes
+    [1,2,3,4,4,3,2,1], // mouth
+    [0,1,2,2,2,2,1,0], // neck/chest
+    [0,1,2,2,2,2,1,0], // body
+    [1,2,2,2,2,2,2,1], // body bottom
+    [0,1,1,0,0,1,1,0]  // legs
+  ];
+  
+  // Different color schemes for P1 (orange/yellow) and P2 (green/teal)
+  const p1Colors = {
+    0: null,
+    1: alive ? 0x8b4513 : 0x555555, // dark brown
+    2: alive ? 0xcd853f : 0x666666, // medium brown
+    3: alive ? 0xffa500 : 0x777777, // orange
+    4: 0x000000, // black (eyes, mouth)
+    5: 0xffffff  // white
+  };
+  
+  const p2Colors = {
+    0: null,
+    1: alive ? 0x2d5016 : 0x555555, // dark green
+    2: alive ? 0x4a7c59 : 0x666666, // medium green
+    3: alive ? 0x00ff88 : 0x777777, // bright green/teal
+    4: 0x000000, // black (eyes, mouth)
+    5: 0xffffff  // white
+  };
+  
+  const colors = playerNum === 1 ? p1Colors : p2Colors;
+  
+  // Draw sprite pixel by pixel
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 8; col++) {
+      const val = sprite[row][col];
+      if (val && colors[val]) {
+        g.fillStyle(colors[val], 1);
+        g.fillRect(x + col * px, y + row * py, px, py);
+      }
+    }
+  }
+  
+  // Add subtle outline for better visibility
+  if (alive) {
+    const outlineColor = playerNum === 1 ? 0xff8800 : 0x00aa66;
+    g.lineStyle(1, outlineColor, 0.8);
+    g.strokeRect(x, y, w, h);
+  }
+  
+  // Draw circular cyan aura when in Platanus Hack mode (immune)
+  if (alive && immune) {
+    const centerX = x + w / 2;
+    const centerY = y + h / 2;
+    const radius = Math.max(w, h) * 0.7;
+    
+    // Outer glow
+    g.lineStyle(3, 0x00ffff, 0.6);
+    g.beginPath();
+    g.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    g.strokePath();
+    
+    // Inner glow
+    g.lineStyle(2, 0x88ffff, 0.8);
+    g.beginPath();
+    g.arc(centerX, centerY, radius * 0.85, 0, Math.PI * 2);
+    g.strokePath();
   }
 }
 
@@ -363,9 +479,6 @@ function update(time, delta) {
     
     bananas = bananas.filter(b => {
       if (Math.abs(p2.x - (b.x - cameraX)) < 25 && Math.abs(p2.y - b.y) < 25) {
-        if (b.sprite) {
-          b.sprite.destroy();
-        }
         p2Immune = true;
         immuneTimer2 = 5000;
         showBanner();
@@ -414,9 +527,6 @@ function update(time, delta) {
     
     bananas = bananas.filter(b => {
       if (Math.abs(p1.x - (b.x - cameraX)) < 25 && Math.abs(p1.y - b.y) < 25) {
-        if (b.sprite) {
-          b.sprite.destroy();
-        }
         p1Immune = true;
         immuneTimer1 = 5000;
         showBanner();
@@ -445,37 +555,14 @@ function update(time, delta) {
   if (Math.random() < 0.006 && bananas.length < 5) {
     const bananaX = cameraX + 900;
     const bananaY = groundY - 25;
-    let bananaSprite = null;
-    
-    // Create sprite if image is loaded - use screen coordinates
-    if (scene.textures.exists(bananaImageKey)) {
-      const screenX = bananaX - cameraX;
-      bananaSprite = scene.add.image(screenX, bananaY, bananaImageKey);
-      bananaSprite.setDisplaySize(50, 50);
-      bananaSprite.setVisible(false);
-    }
-    
-    bananas.push({ x: bananaX, y: bananaY, r: 10, t: 0, sprite: bananaSprite });
+    bananas.push({ x: bananaX, y: bananaY, size: 30, t: 0 });
   }
   
   bananas.forEach(b => {
     b.t += delta;
-    // Update sprite position relative to camera
-    if (b.sprite && scene.textures.exists(bananaImageKey)) {
-      const screenX = b.x - cameraX;
-      if (screenX > -50 && screenX < 850) {
-        b.sprite.setPosition(screenX, b.y);
-        b.sprite.setVisible(true);
-      } else {
-        b.sprite.setVisible(false);
-      }
-    }
   });
   bananas = bananas.filter(b => {
     if (b.t >= 15000) {
-      if (b.sprite) {
-        b.sprite.destroy();
-      }
       return false;
     }
     return true;
@@ -560,17 +647,10 @@ function drawGame() {
   });
   
   bananas.forEach(b => {
-    // Only draw fallback if sprite not available
-    if (!b.sprite || !scene.textures.exists(bananaImageKey)) {
-      const x = b.x - cameraX;
-      if (x > -50 && x < 850) {
-        graphics.fillStyle(0xffff00, 0.9);
-        graphics.fillCircle(x, b.y, b.r);
-        graphics.lineStyle(2, 0xffaa00, 1);
-        graphics.strokeCircle(x, b.y, b.r);
-      }
+    const x = b.x - cameraX;
+    if (x > -50 && x < 850) {
+      drawBanana8bit(graphics, x - b.size/2, b.y - b.size/2, b.size);
     }
-    // Sprite position is updated in update() function
   });
   
   enemies.forEach(e => {
@@ -601,55 +681,15 @@ function drawGame() {
   });
   
   if (p1) {
-    const p1Color = p1Alive ? (p1Immune ? 0x00ffff : 0xffdd00) : 0x808080;
-    const cx = p1.x + p1.w/2;
-    const cy = p1.y + p1.h/2;
-    
-    graphics.fillStyle(p1Color, 1);
-    graphics.beginPath();
-    graphics.arc(cx, cy, p1.w/2, 0, Math.PI * 2);
-    graphics.fillPath();
-    
-    graphics.lineStyle(3, p1Alive ? 0xffaa00 : 0x555555, 1);
-    graphics.beginPath();
-    graphics.arc(cx, cy, p1.w/2, 0, Math.PI * 2);
-    graphics.strokePath();
-    
-    if (p1Alive) {
-      graphics.fillStyle(0xffffaa, 0.6);
-      graphics.fillCircle(cx - 7, cy - 5, 7);
-      
-      graphics.fillStyle(0x000000, 1);
-      graphics.fillCircle(cx - 4, cy - 4, 3);
-      graphics.fillCircle(cx + 4, cy - 4, 3);
-      graphics.fillRect(cx - 2, cy + 2, 4, 2);
-    }
+    // Draw monkey sprite: p1.y represents top position (based on collision detection)
+    // P1 uses orange/yellow color scheme
+    drawMonkey8bit(graphics, p1.x, p1.y, p1.w, p1.h, p1Alive, p1Immune, 1);
   }
   
   if (twoPlayer && p2) {
-    const p2Color = p2Alive ? (p2Immune ? 0x00ffff : 0x00ff88) : 0x808080;
-    const cx2 = p2.x + p2.w/2;
-    const cy2 = p2.y + p2.h/2;
-    
-    graphics.fillStyle(p2Color, 1);
-    graphics.beginPath();
-    graphics.arc(cx2, cy2, p2.w/2, 0, Math.PI * 2);
-    graphics.fillPath();
-    
-    graphics.lineStyle(3, p2Alive ? 0x00aa66 : 0x555555, 1);
-    graphics.beginPath();
-    graphics.arc(cx2, cy2, p2.w/2, 0, Math.PI * 2);
-    graphics.strokePath();
-    
-    if (p2Alive) {
-      graphics.fillStyle(0x88ffaa, 0.6);
-      graphics.fillCircle(cx2 - 7, cy2 - 5, 7);
-      
-      graphics.fillStyle(0x000000, 1);
-      graphics.fillCircle(cx2 - 4, cy2 - 4, 3);
-      graphics.fillCircle(cx2 + 4, cy2 - 4, 3);
-      graphics.fillRect(cx2 - 2, cy2 + 2, 4, 2);
-    }
+    // Draw monkey sprite: p2.y represents top position (based on collision detection)
+    // P2 uses green/teal color scheme
+    drawMonkey8bit(graphics, p2.x, p2.y, p2.w, p2.h, p2Alive, p2Immune, 2);
   }
 }
 
