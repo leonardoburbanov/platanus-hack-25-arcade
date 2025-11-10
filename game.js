@@ -576,9 +576,17 @@ function update(time, delta) {
       const dy = p2.y - b.y;
       if (dx * dx + dy * dy < 625) { // 25^2 = 625
         if (p2Immune) {
-          p2Bananas++;
-          if (p2Bananas >= 2) {
-            p2ShootTimer = 0; // Start shooting immediately
+          // Maximum 3 bananas
+          if (p2Bananas < 3) {
+            p2Bananas++;
+            immuneTimer2 += 2000; // Extend Platanus Hack mode by 2 seconds per banana
+            if (p2Bananas >= 2) {
+              p2ShootTimer = 0; // Start shooting immediately
+            }
+            if (p2Bananas >= 2) {
+              showBanner(true); // Animate with cyan for second banana
+            }
+            bananas.splice(i, 1);
           }
         } else {
           p2Immune = true;
@@ -586,11 +594,8 @@ function update(time, delta) {
           immuneTimer2 = 5000;
           showBanner(false);
           playStarMusic();
+          bananas.splice(i, 1);
         }
-        if (p2Bananas >= 2) {
-          showBanner(true); // Animate with cyan for second banana
-        }
-        bananas.splice(i, 1);
       }
     }
     
@@ -640,9 +645,17 @@ function update(time, delta) {
       const dy = p1.y - b.y;
       if (dx * dx + dy * dy < 625) { // 25^2 = 625
         if (p1Immune) {
-          p1Bananas++;
-          if (p1Bananas >= 2) {
-            p1ShootTimer = 0; // Start shooting immediately
+          // Maximum 3 bananas
+          if (p1Bananas < 3) {
+            p1Bananas++;
+            immuneTimer1 += 2000; // Extend Platanus Hack mode by 2 seconds per banana
+            if (p1Bananas >= 2) {
+              p1ShootTimer = 0; // Start shooting immediately
+            }
+            if (p1Bananas >= 2) {
+              showBanner(true); // Animate with cyan for second banana
+            }
+            bananas.splice(i, 1);
           }
         } else {
           p1Immune = true;
@@ -650,11 +663,8 @@ function update(time, delta) {
           immuneTimer1 = 5000;
           showBanner(false);
           playStarMusic();
+          bananas.splice(i, 1);
         }
-        if (p1Bananas >= 2) {
-          showBanner(true); // Animate with cyan for second banana
-        }
-        bananas.splice(i, 1);
       }
     }
   }
@@ -739,6 +749,8 @@ function update(time, delta) {
       continue;
     }
     
+    let hit = false;
+    
     // Check collision with codes (only if on screen)
     if (projX > -50 && projX < 850) {
       for (let j = codes.length - 1; j >= 0; j--) {
@@ -753,10 +765,39 @@ function update(time, delta) {
           }
           playTone(600, 0.1);
           codes.splice(j, 1);
-          projectiles.splice(i, 1);
+          hit = true;
           break;
         }
       }
+      
+      // Check collision with enemies (4xx/5xx codes) if not already hit
+      if (!hit) {
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const e = enemies[j];
+          const ex = e.x - cameraX;
+          if (ex > -50 && ex < 850) {
+            // Check if projectile is within enemy bounds
+            if (projX >= ex && projX <= ex + e.w && 
+                proj.y >= e.y && proj.y <= e.y + e.h) {
+              // Award points based on enemy type
+              if (proj.player === 1) {
+                p1Points += e.type;
+              } else {
+                p2Points += e.type;
+              }
+              playTone(400, 0.2);
+              enemies.splice(j, 1);
+              hit = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    // Remove projectile if it hit something
+    if (hit) {
+      projectiles.splice(i, 1);
     }
   }
   
