@@ -74,25 +74,27 @@ function drawDigit(g, x, y, digit, size) {
 // Draw 8-bit style banana sprite - matches reference design
 function drawBanana8bit(g, x, y, size) {
   const px = size / 10;
-  const py = size / 14;
+  const py = size / 10;
   
   // 10x14 banana - crescent shape, stem at top-left, curves to bottom-right
   // Progressive shift right in middle creates the curve
   const sprite = [
-    [3,3,0,0,0,0,0,0,0,0], // stem top (2x2 brown at top-left)
-    [3,3,0,0,0,0,0,0,0,0], // stem bottom
-    [1,2,2,1,0,0,0,0,0,0], // top - connects to stem, narrow
-    [0,1,2,2,2,1,0,0,0,0], // widening - shift right 1
-    [0,0,1,2,2,2,2,1,0,0], // wider - shift right 1
-    [0,0,0,1,2,2,2,2,2,1], // wide - shift right 1
-    [0,0,0,0,1,2,2,2,2,2], // widest - shift right 1, max curve
-    [0,0,0,0,0,1,2,2,2,2], // still wide - shift right 1
-    [0,0,0,0,0,0,1,2,2,2], // narrowing - shift right 1
-    [0,0,0,0,0,0,0,1,2,2], // more narrow - shift right 1
-    [0,0,0,0,0,0,0,0,1,2], // tapering - shift right 1
-    [0,0,0,0,0,0,0,0,0,1], // tip - shift right 1
-    [0,0,0,0,0,0,0,0,0,1], // tip - same
-    [0,0,0,0,0,0,0,0,0,1]  // tip end
+    [0,0,0,3,3,0,0,0,0,0], // stem moved right
+    [0,0,0,3,3,0,0,0,0,0], // stem base
+    [0,0,0,1,1,0,0,0,0,0], // top - narrow start
+    [0,0,1,2,2,1,0,0,0,0], // thickening
+    [0,0,2,2,2,1,0,0,0,0], // thicker
+    [0,0,2,2,2,1,0,0,0,0], // full thickness
+    [0,0,1,2,2,2,1,0,0,0], // start curving left
+    [0,0,1,2,2,2,1,0,0,0], // curve more
+    [0,0,0,1,2,2,1,0,0,0], // continuing curve
+    [0,0,0,1,2,2,1,0,0,0], // maintain curve
+    [0,0,0,0,1,2,1,0,0,0], // tapering
+    [0,0,0,0,1,2,2,1,0,0], // more taper
+    [0,0,0,0,0,1,2,1,0,0], // narrowing
+    [0,0,0,0,0,0,1,1,0,0], // tip
+    [0,0,0,0,0,0,0,1,0,0], // pointed end
+    [0,0,0,0,0,0,0,0,0,0]  // bottom
   ];
   
   const colors = {
