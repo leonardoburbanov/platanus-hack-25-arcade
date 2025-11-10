@@ -168,13 +168,6 @@ function drawMonkey8bit(g, x, y, w, h, alive, immune, playerNum) {
     }
   }
   
-  // Add subtle outline for better visibility
-  if (alive) {
-    const outlineColor = playerNum === 1 ? 0xff8800 : 0x00aa66;
-    g.lineStyle(1, outlineColor, 0.8);
-    g.strokeRect(x, y, w, h);
-  }
-  
   // Draw circular cyan aura when in Platanus Hack mode (immune)
   if (alive && immune) {
     const centerX = x + w / 2;
