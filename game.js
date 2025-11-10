@@ -18,7 +18,7 @@ const game = new Phaser.Game(config);
 let p1, p2, codes = [], enemies = [], bananas = [];
 let stars = [];
 let p1Collected = 0, p2Collected = 0, p1Points = 0, p2Points = 0, timer = 120000;
-let timerText, scoreText1, scoreText2, bananaText1, bananaText2, gameOver = false;
+let timerText, scoreText1, scoreText2, bananaText1, bananaText2, immuneTimerText1, immuneTimerText2, gameOver = false;
 let graphics, scene, twoPlayer = false;
 let p1Immune = false, p2Immune = false;
 let immuneTimer1 = 0, immuneTimer2 = 0;
@@ -231,6 +231,20 @@ function create() {
     visible: false
   });
   
+  immuneTimerText1 = this.add.text(300, 35, '', {
+    fontSize: '18px',
+    fontFamily: 'Arial',
+    color: '#00ffff',
+    visible: false
+  });
+  
+  immuneTimerText2 = this.add.text(300, 60, '', {
+    fontSize: '18px',
+    fontFamily: 'Arial',
+    color: '#00ffff',
+    visible: false
+  });
+  
   this.add.text(10, 570, 'UP: Jump | SPACE: Add P2', {
     fontSize: '14px',
     fontFamily: 'Arial',
@@ -304,6 +318,7 @@ function create() {
       p2 = { x: 150, y: groundY, w: 35, h: 45 };
       scoreText2.setVisible(true);
       bananaText2.setVisible(true);
+      immuneTimerText2.setVisible(false);
       stars = []; // Reset stars for new game
       projectiles = [];
       p1Bananas = 0;
@@ -431,10 +446,18 @@ function update(time, delta) {
   
   if (p1Immune) {
     immuneTimer1 -= delta;
+    const remaining = Math.ceil(immuneTimer1 / 1000);
+    if (remaining > 0) {
+      immuneTimerText1.setText('HACK: ' + remaining + 's');
+      immuneTimerText1.setVisible(true);
+    } else {
+      immuneTimerText1.setVisible(false);
+    }
     if (immuneTimer1 <= 0) {
       p1Immune = false;
       p1Bananas = 0;
       p1ShootTimer = 0;
+      immuneTimerText1.setVisible(false);
       if (bannerText) bannerText.setVisible(false);
       stopStarMusic();
     } else if (p1Bananas >= 2) {
@@ -458,10 +481,18 @@ function update(time, delta) {
   }
   if (p2Immune && twoPlayer) {
     immuneTimer2 -= delta;
+    const remaining = Math.ceil(immuneTimer2 / 1000);
+    if (remaining > 0) {
+      immuneTimerText2.setText('HACK: ' + remaining + 's');
+      immuneTimerText2.setVisible(true);
+    } else {
+      immuneTimerText2.setVisible(false);
+    }
     if (immuneTimer2 <= 0) {
       p2Immune = false;
       p2Bananas = 0;
       p2ShootTimer = 0;
+      immuneTimerText2.setVisible(false);
       if (bannerText) bannerText.setVisible(false);
       stopStarMusic();
     } else if (p2Bananas >= 2) {
@@ -631,7 +662,7 @@ function update(time, delta) {
     spawnCode();
   }
   
-  if (Math.random() < 0.006 && bananas.length < 5) {
+  if (Math.random() < 0.015 && bananas.length < 10) {
     const bananaX = cameraX + 900;
     const bananaY = groundY - 25;
     bananas.push({ x: bananaX, y: bananaY, size: 30, t: 0 });
@@ -916,6 +947,8 @@ function restartGame() {
   p2Bananas = 0;
   p1ShootTimer = 0;
   p2ShootTimer = 0;
+  if (immuneTimerText1) immuneTimerText1.setVisible(false);
+  if (immuneTimerText2) immuneTimerText2.setVisible(false);
   if (bannerText) bannerText.setVisible(false);
   stopStarMusic();
   musicTime = 0;
