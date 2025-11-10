@@ -18,7 +18,7 @@ const game = new Phaser.Game(config);
 let p1, p2, codes = [], enemies = [], bananas = [];
 let stars = [];
 let p1Collected = 0, p2Collected = 0, p1Points = 0, p2Points = 0, timer = 120000;
-let timerText, scoreText1, scoreText2, gameOver = false;
+let timerText, scoreText1, scoreText2, bananaText1, bananaText2, gameOver = false;
 let graphics, scene, twoPlayer = false;
 let p1Immune = false, p2Immune = false;
 let immuneTimer1 = 0, immuneTimer2 = 0;
@@ -31,6 +31,9 @@ let p2Jumping = false, p2JumpVel = 0, p2DoubleJumpUsed = false;
 let cameraX = 0, lastObstacleX = 600;
 let cursors, wasd, spaceKey;
 let bannerText = null, starMusicOsc = null, starMusicGain = null, musicTime = 0, starMusicOsc2 = null;
+let projectiles = [];
+let p1Bananas = 0, p2Bananas = 0;
+let p1ShootTimer = 0, p2ShootTimer = 0;
 
 function preload() {
   // No assets to preload - using procedural 8-bit graphics
@@ -215,6 +218,19 @@ function create() {
     visible: false
   });
   
+  bananaText1 = this.add.text(200, 35, '🍌: 0', {
+    fontSize: '20px',
+    fontFamily: 'Arial',
+    color: '#ffff00'  // Yellow for bananas
+  });
+  
+  bananaText2 = this.add.text(200, 60, '🍌: 0', {
+    fontSize: '20px',
+    fontFamily: 'Arial',
+    color: '#ffff00',  // Yellow for bananas
+    visible: false
+  });
+  
   this.add.text(10, 570, 'UP: Jump | SPACE: Add P2', {
     fontSize: '14px',
     fontFamily: 'Arial',
@@ -287,7 +303,13 @@ function create() {
       twoPlayer = true;
       p2 = { x: 150, y: groundY, w: 35, h: 45 };
       scoreText2.setVisible(true);
+      bananaText2.setVisible(true);
       stars = []; // Reset stars for new game
+      projectiles = [];
+      p1Bananas = 0;
+      p2Bananas = 0;
+      p1ShootTimer = 0;
+      p2ShootTimer = 0;
         for (let i = 0; i < 5; i++) {
           const successCodes = [200, 201, 202, 204, 206];
           const code = successCodes[Math.floor(Math.random() * successCodes.length)];
@@ -411,16 +433,54 @@ function update(time, delta) {
     immuneTimer1 -= delta;
     if (immuneTimer1 <= 0) {
       p1Immune = false;
+      p1Bananas = 0;
+      p1ShootTimer = 0;
       if (bannerText) bannerText.setVisible(false);
       stopStarMusic();
+    } else if (p1Bananas >= 2) {
+      // Auto-shoot projectiles in burst
+      p1ShootTimer += delta;
+      if (p1ShootTimer >= 150) { // Shoot every 150ms
+        p1ShootTimer = 0;
+        const baseY = p1.y + p1.h / 2;
+        for (let i = 0; i < 3; i++) {
+          projectiles.push({
+            x: cameraX + p1.x + p1.w,
+            y: baseY + (i - 1) * 10, // Spread vertically
+            vx: 15,
+            vy: 0,
+            player: 1
+          });
+        }
+        playTone(500, 0.05);
+      }
     }
   }
   if (p2Immune && twoPlayer) {
     immuneTimer2 -= delta;
     if (immuneTimer2 <= 0) {
       p2Immune = false;
+      p2Bananas = 0;
+      p2ShootTimer = 0;
       if (bannerText) bannerText.setVisible(false);
       stopStarMusic();
+    } else if (p2Bananas >= 2) {
+      // Auto-shoot projectiles in burst
+      p2ShootTimer += delta;
+      if (p2ShootTimer >= 150) { // Shoot every 150ms
+        p2ShootTimer = 0;
+        const baseY = p2.y + p2.h / 2;
+        for (let i = 0; i < 3; i++) {
+          projectiles.push({
+            x: cameraX + p2.x + p2.w,
+            y: baseY + (i - 1) * 10, // Spread vertically
+            vx: 15,
+            vy: 0,
+            player: 2
+          });
+        }
+        playTone(500, 0.05);
+      }
     }
   }
   
@@ -476,10 +536,21 @@ function update(time, delta) {
     
     bananas = bananas.filter(b => {
       if (Math.abs(p2.x - (b.x - cameraX)) < 25 && Math.abs(p2.y - b.y) < 25) {
-        p2Immune = true;
-        immuneTimer2 = 5000;
-        showBanner();
-        playStarMusic();
+        if (p2Immune) {
+          p2Bananas++;
+          if (p2Bananas >= 2) {
+            p2ShootTimer = 0; // Start shooting immediately
+          }
+        } else {
+          p2Immune = true;
+          p2Bananas = 1; // First banana
+          immuneTimer2 = 5000;
+          showBanner(false);
+          playStarMusic();
+        }
+        if (p2Bananas >= 2) {
+          showBanner(true); // Animate with cyan for second banana
+        }
         return false;
       }
       return true;
@@ -524,10 +595,21 @@ function update(time, delta) {
     
     bananas = bananas.filter(b => {
       if (Math.abs(p1.x - (b.x - cameraX)) < 25 && Math.abs(p1.y - b.y) < 25) {
-        p1Immune = true;
-        immuneTimer1 = 5000;
-        showBanner();
-        playStarMusic();
+        if (p1Immune) {
+          p1Bananas++;
+          if (p1Bananas >= 2) {
+            p1ShootTimer = 0; // Start shooting immediately
+          }
+        } else {
+          p1Immune = true;
+          p1Bananas = 1; // First banana
+          immuneTimer1 = 5000;
+          showBanner(false);
+          playStarMusic();
+        }
+        if (p1Bananas >= 2) {
+          showBanner(true); // Animate with cyan for second banana
+        }
         return false;
       }
       return true;
@@ -596,10 +678,39 @@ function update(time, delta) {
   enemies = enemies.filter(e => e.x - cameraX > -100);
   codes = codes.filter(c => c.x - cameraX > -100);
   
+  // Update projectiles and check collisions with codes
+  projectiles = projectiles.filter(proj => {
+    proj.x += proj.vx;
+    const projX = proj.x - cameraX;
+    
+    // Check collision with codes
+    let hit = false;
+    for (let i = codes.length - 1; i >= 0; i--) {
+      const c = codes[i];
+      const cx = c.x - cameraX;
+      if (projX > -50 && projX < 850 && Math.abs(projX - cx) < 25 && Math.abs(proj.y - c.y) < 25) {
+        if (proj.player === 1) {
+          p1Collected += 200;
+        } else {
+          p2Collected += 200;
+        }
+        playTone(600, 0.1);
+        codes.splice(i, 1);
+        hit = true;
+        break;
+      }
+    }
+    
+    // Remove if hit code or off screen
+    return !hit && (projX < 850);
+  });
+  
   timerText.setText('Time: ' + Math.ceil(timer / 1000));
   scoreText1.setText('P1: ' + (p1Collected + p1Points));
+  bananaText1.setText('🍌: ' + p1Bananas);
   if (twoPlayer) {
     scoreText2.setText('P2: ' + (p2Collected + p2Points));
+    bananaText2.setText('🍌: ' + p2Bananas);
   }
   
   drawGame();
@@ -703,6 +814,18 @@ function drawGame() {
     // P2 uses green/teal color scheme
     drawMonkey8bit(graphics, p2.x, p2.y, p2.w, p2.h, p2Alive, p2Immune, 2);
   }
+  
+  // Draw projectiles
+  projectiles.forEach(proj => {
+    const x = proj.x - cameraX;
+    if (x > -10 && x < 810) {
+      const color = proj.player === 1 ? 0xffa500 : 0x00ff88;
+      graphics.fillStyle(color, 1);
+      graphics.fillCircle(x, proj.y, 6);
+      graphics.lineStyle(2, 0xffffff, 1);
+      graphics.strokeCircle(x, proj.y, 6);
+    }
+  });
 }
 
 function endGame(won) {
@@ -788,6 +911,11 @@ function restartGame() {
   p2 = null;
   gameOver = false;
   stars = []; // Reset stars
+  projectiles = [];
+  p1Bananas = 0;
+  p2Bananas = 0;
+  p1ShootTimer = 0;
+  p2ShootTimer = 0;
   if (bannerText) bannerText.setVisible(false);
   stopStarMusic();
   musicTime = 0;
@@ -811,28 +939,86 @@ function playTone(frequency, duration) {
   oscillator.stop(audioContext.currentTime + duration);
 }
 
-function showBanner() {
-  if (bannerText) {
+function showBanner(secondBanana = false) {
+  if (!bannerText) {
+    bannerText = scene.add.text(400, 150, 'PLATANUS HACK MODE', {
+      fontSize: '48px',
+      fontFamily: 'Arial',
+      color: '#ffff00',
+      stroke: '#000000',
+      strokeThickness: 6,
+      fontWeight: 'bold'
+    }).setOrigin(0.5).setVisible(true);
+  } else {
     bannerText.setVisible(true);
-    return;
   }
   
-  bannerText = scene.add.text(400, 150, 'PLATANUS HACK MODE', {
-    fontSize: '48px',
-    fontFamily: 'Arial',
-    color: '#ffff00',
-    stroke: '#000000',
-    strokeThickness: 6,
-    fontWeight: 'bold'
-  }).setOrigin(0.5).setVisible(true);
-  
-  scene.tweens.add({
-    targets: bannerText,
-    alpha: { from: 1, to: 0.3 },
-    duration: 200,
-    yoyo: true,
-    repeat: -1
-  });
+  // If second banana, animate with cyan colors
+  if (secondBanana) {
+    // Stop existing tweens
+    scene.tweens.killTweensOf(bannerText);
+    
+    // Animate color between cyan shades
+    scene.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: 300,
+      yoyo: true,
+      repeat: -1,
+      onUpdate: function(tween) {
+        const value = tween.getValue();
+        // Interpolate between #00ffff (cyan) and #88ffff (light cyan)
+        const r = 0;
+        const g = Math.floor(255 - (255 - 136) * value);
+        const b = 255;
+        const hexColor = '#' + [r, g, b].map(x => {
+          const hex = x.toString(16);
+          return hex.length === 1 ? '0' + hex : hex;
+        }).join('');
+        bannerText.setColor(hexColor);
+      }
+    });
+    
+    // Also animate scale for extra effect
+    scene.tweens.add({
+      targets: bannerText,
+      scale: { from: 1, to: 1.1 },
+      duration: 200,
+      yoyo: true,
+      repeat: -1
+    });
+    
+    // Animate stroke color to cyan
+    scene.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: 300,
+      yoyo: true,
+      repeat: -1,
+      onUpdate: function(tween) {
+        const value = tween.getValue();
+        const r = Math.floor(0);
+        const g = Math.floor(255 - (255 - 136) * value);
+        const b = Math.floor(255);
+        bannerText.setStroke(`rgb(${r},${g},${b})`, 6);
+      }
+    });
+  } else {
+    // Normal yellow animation
+    scene.tweens.killTweensOf(bannerText);
+    bannerText.clearTint();
+    bannerText.setColor('#ffff00');
+    bannerText.setStroke('#000000', 6);
+    bannerText.setScale(1);
+    
+    scene.tweens.add({
+      targets: bannerText,
+      alpha: { from: 1, to: 0.3 },
+      duration: 200,
+      yoyo: true,
+      repeat: -1
+    });
+  }
 }
 
 function playStarMusic() {
