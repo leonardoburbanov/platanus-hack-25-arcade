@@ -16,6 +16,7 @@ const config = {
 const game = new Phaser.Game(config);
 
 let p1, p2, codes = [], enemies = [], bananas = [];
+let stars = [];
 let p1Collected = 0, p2Collected = 0, p1Points = 0, p2Points = 0, timer = 120000;
 let timerText, scoreText1, scoreText2, gameOver = false;
 let graphics, scene, twoPlayer = false;
@@ -286,6 +287,7 @@ function create() {
       twoPlayer = true;
       p2 = { x: 150, y: groundY, w: 35, h: 45 };
       scoreText2.setVisible(true);
+      stars = []; // Reset stars for new game
         for (let i = 0; i < 5; i++) {
           const successCodes = [200, 201, 202, 204, 206];
           const code = successCodes[Math.floor(Math.random() * successCodes.length)];
@@ -607,36 +609,51 @@ function drawGame() {
   if (!graphics) return;
   graphics.clear();
   
+  // Simple solid background (drawn once, Phaser handles the rest via backgroundColor)
+  // Background is handled by Phaser's backgroundColor config
+  
+  // Draw simple stars (fewer, larger for better performance)
+  if (stars.length === 0) {
+    // Initialize stars - fewer for better performance
+    for (let i = 0; i < 30; i++) {
+      stars.push({
+        x: Math.random() * 2000,
+        y: Math.random() * 500,
+        size: 1.5,
+        speed: 0.3
+      });
+    }
+  }
+  
+  stars.forEach(star => {
+    const x = (star.x - cameraX * star.speed) % 2000;
+    if (x >= -10 && x <= 810) {
+      graphics.fillStyle(0xffffff, 0.6);
+      graphics.fillCircle(x, star.y, star.size);
+    }
+  });
+  
+  // Draw ground line
   graphics.lineStyle(3, 0x00ffff, 0.5);
   graphics.moveTo(0, groundY + 28);
   graphics.lineTo(800, groundY + 28);
   graphics.strokePath();
   
-  for (let i = 0; i < 40; i++) {
-    const x = (i * 20 - cameraX % 20);
-    if (x >= -20 && x <= 820) {
-      graphics.lineStyle(1, 0x00ffff, 0.1);
-      graphics.moveTo(x, 0);
-      graphics.lineTo(x, 600);
-      graphics.strokePath();
-    }
-  }
-  
   codes.forEach(c => {
     const x = c.x - cameraX;
     if (x > -50 && x < 850) {
-      graphics.fillStyle(0x00ff00, 0.9);
+      graphics.fillStyle(0x00ff88, 0.9);
       graphics.fillCircle(x, c.y, c.r);
-      graphics.lineStyle(2, 0x00ff00, 1);
+      graphics.lineStyle(2, 0x00ff88, 1);
       graphics.strokeCircle(x, c.y, c.r);
       
-      // Draw 2xx code dynamically
+      // Draw 2xx code dynamically (centered inside circle)
       const code = (c.code || 200).toString();
       const cx = x;
-      const cy = c.y - 14;
-      const offset = (code.length === 3 ? -8 : -4);
+      const cy = c.y - 5.25; // Center vertically (digit height is 10.5px)
+      const offset = (code.length === 3 ? -13.5 : -9);
       for (let i = 0; i < code.length; i++) {
-        drawDigit(graphics, cx + offset + i * 12, cy, code[i], 2);
+        drawDigit(graphics, cx + offset + i * 9, cy, code[i], 1.5);
       }
     }
   });
@@ -653,8 +670,8 @@ function drawGame() {
     if (x > -50 && x < 850) {
       e.pulse = (e.pulse || 0) + 0.12;
       const pulseScale = 1 + Math.sin(e.pulse) * 0.15;
-      // 4xx codes = orange, 5xx codes = red
-      const color = e.type < 500 ? 0xff6600 : 0xff0000;
+      // 4xx codes = orange (matches P1 palette), 5xx codes = red
+      const color = e.type < 500 ? 0xffa500 : 0xcc3300;
       
       graphics.fillStyle(color, 0.25);
       graphics.fillCircle(x + e.w/2, e.y + e.h/2, e.w * 0.7 * pulseScale);
@@ -664,13 +681,13 @@ function drawGame() {
       graphics.lineStyle(4, 0xffffff, 1);
       graphics.strokeRect(x, e.y, e.w, e.h);
       
-      // Draw status code dynamically
+      // Draw status code dynamically (centered inside rectangle)
       const code = e.type.toString();
       const cx = x + e.w/2;
-      const cy = e.y + e.h/2 - 16;
-      const offset = (code.length === 3 ? -8 : -4);
+      const cy = e.y + e.h/2 - 5.25; // Center vertically (digit height is 10.5px)
+      const offset = (code.length === 3 ? -13.5 : -9);
       for (let i = 0; i < code.length; i++) {
-        drawDigit(graphics, cx + offset + i * 12, cy, code[i], 2);
+        drawDigit(graphics, cx + offset + i * 9, cy, code[i], 1.5);
       }
     }
   });
@@ -770,6 +787,7 @@ function restartGame() {
   p1.y = groundY;
   p2 = null;
   gameOver = false;
+  stars = []; // Reset stars
   if (bannerText) bannerText.setVisible(false);
   stopStarMusic();
   musicTime = 0;
