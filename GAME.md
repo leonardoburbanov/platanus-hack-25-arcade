@@ -69,18 +69,31 @@ These represent successful HTTP requests and award points:
 Special collectibles that grant powerful abilities:
 
 - **Visual**: Banana-shaped icons with Platanus logo
-- **Size**: 50x50 pixels
-- **Spawn Rate**: Random chance, up to 5 bananas active at once
+- **Size**: 30x30 pixels
+- **Spawn Rate**: Random chance, up to 10 bananas active at once
 - **Duration**: Despawn after 15 seconds if not collected
+- **Stacking**: Can collect up to 3 bananas for enhanced abilities
 
 **PLATANUS HACK MODE**:
-- Grants **5 seconds of immunity** when collected
-- During immunity:
-  - Player glows cyan color
-  - "PLATANUS HACK MODE" banner appears
-  - Special background music plays
-  - Contact with error codes destroys them instead of eliminating you
-  - Destroying error codes awards bonus points equal to their status code number (400-511 points)
+- **First Banana**: Activates immunity mode with **5 seconds of immunity**
+- **Additional Bananas** (up to 3 total): Each banana extends immunity by **2 seconds**
+- **Banana Counter**: Displayed as 🍌: X in the UI
+
+**Immunity Effects**:
+- Player glows cyan color
+- "PLATANUS HACK MODE" banner appears
+- Special background music plays
+- Contact with error codes destroys them instead of eliminating you
+- Destroying error codes awards bonus points equal to their status code number (400-511 points)
+
+**Projectile Shooting** (2+ Bananas):
+- At **2 or more bananas**, players gain automatic projectile shooting ability
+- Shoots **3 projectiles in a burst** every 150ms
+- Projectiles travel forward and can:
+  - Collect 2xx success codes for **200 points** each
+  - Destroy error codes (4xx/5xx) for **status code value** in points
+- Banner animates with cyan colors when shooting is active
+- Projectiles are color-coded: orange for Player 1, green for Player 2
 
 ## Obstacles - HTTP Error Codes
 
@@ -208,10 +221,14 @@ As difficulty increases, more complex patterns appear:
 - Different 2xx codes all award the same value
 
 **Error Code Destruction**: +status code value
-- Only during PLATANUS HACK MODE
+- During PLATANUS HACK MODE (contact or projectiles)
 - 4xx codes: 400-431 points
 - 5xx codes: 500-511 points
 - Higher status codes = higher point values
+
+**Projectile Collection**: +200 points per 2xx code
+- Projectiles automatically collect success codes they hit
+- Allows scoring from a distance during immunity mode
 
 ### Score Display
 - **Player 1 Score**: Displayed in green at top-left
@@ -245,6 +262,8 @@ As difficulty increases, more complex patterns appear:
 - Highlight effects on collectibles
 - Visual feedback on collection
 - Banner animation for PLATANUS HACK MODE
+- Cyan animated banner when projectile shooting is active (2+ bananas)
+- Projectile trails showing shooting direction
 
 ## Audio Features
 
@@ -270,10 +289,12 @@ As difficulty increases, more complex patterns appear:
 4. **Watch Height Levels**: Learn to identify which obstacles require jumps
 
 ### For Advanced Players
-1. **Time Bananas**: Collect bananas before encountering walls or waves
-2. **Prioritize High-Value Codes**: During immunity, target 5xx codes for more points
-3. **Anticipate Patterns**: Learn to recognize pattern types for better navigation
-4. **Two-Player Coordination**: Split collection duties for maximum efficiency
+1. **Stack Bananas**: Collect multiple bananas to extend immunity and unlock projectiles
+2. **Time Bananas**: Collect bananas before encountering walls or waves
+3. **Use Projectiles**: At 2+ bananas, let projectiles collect codes and destroy enemies automatically
+4. **Prioritize High-Value Codes**: During immunity, target 5xx codes for more points (or let projectiles do it)
+5. **Anticipate Patterns**: Learn to recognize pattern types for better navigation
+6. **Two-Player Coordination**: Split collection duties for maximum efficiency
 
 ### Pattern-Specific Strategies
 

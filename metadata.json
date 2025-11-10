@@ -1,4 +1,4 @@
 {
   "game_name": "HTTP Monkey: Error Runner",
-  "description": "A side-scrolling runner where 1 or 2 hacker monkeys race through a digital maze collecting 2xx success codes (200, 201, 202, 204, 206) while avoiding 4xx and 5xx HTTP error codes that spawn at different heights. Use double jump to navigate obstacles. Collect bananas to activate PLATANUS HACK MODE — temporary immunity that lets you destroy error codes for bonus points. Difficulty increases over time with faster speeds and complex obstacle patterns including clusters, walls, waves, and alternating formations. Race against the 120-second timer!"
+  "description": "A side-scrolling runner where 1 or 2 hacker monkeys collect 2xx success codes while avoiding 4xx/5xx HTTP error codes. Use double jump to navigate obstacles. Collect bananas to activate PLATANUS HACK MODE — stack up to 3 bananas for extended immunity and automatic projectile shooting that collects codes and destroys enemies for points. Difficulty increases with faster speeds and complex patterns. Race against the 120-second timer!"
 }
