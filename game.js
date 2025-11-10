@@ -39,9 +39,8 @@ function preload() {
   // No assets to preload - using procedural 8-bit graphics
 }
 
-// Simple digit patterns - 5x7 grid, bold and clear
-function drawDigit(g, x, y, digit, size) {
-  const patterns = {
+// Simple digit patterns - 5x7 grid, bold and clear (cached for performance)
+const digitPatterns = {
     '0': [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]],
     '1': [[0,0,1,0,0],[0,1,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[1,1,1,1,1]],
     '2': [[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1]],
@@ -52,8 +51,10 @@ function drawDigit(g, x, y, digit, size) {
     '7': [[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,0,1]],
     '8': [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]],
     '9': [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[1,1,1,1,1]]
-  };
-  const p = patterns[digit];
+};
+
+function drawDigit(g, x, y, digit, size) {
+  const p = digitPatterns[digit];
   if (!p) return;
   // Draw with black outline for contrast
   g.fillStyle(0x000000, 0.9);
@@ -556,17 +557,24 @@ function update(time, delta) {
       }
     }
     
-    codes = codes.filter(c => {
-      if (Math.abs(p2.x - (c.x - cameraX)) < 25 && Math.abs(p2.y - c.y) < 25) {
+    // Optimized collision: use squared distance to avoid sqrt
+    for (let i = codes.length - 1; i >= 0; i--) {
+      const c = codes[i];
+      const dx = p2.x - (c.x - cameraX);
+      const dy = p2.y - c.y;
+      if (dx * dx + dy * dy < 625) { // 25^2 = 625
         p2Collected += 200;
         playTone(600, 0.1);
-        return false;
+        codes.splice(i, 1);
       }
-      return true;
-    });
+    }
     
-    bananas = bananas.filter(b => {
-      if (Math.abs(p2.x - (b.x - cameraX)) < 25 && Math.abs(p2.y - b.y) < 25) {
+    // Optimized collision: use squared distance
+    for (let i = bananas.length - 1; i >= 0; i--) {
+      const b = bananas[i];
+      const dx = p2.x - (b.x - cameraX);
+      const dy = p2.y - b.y;
+      if (dx * dx + dy * dy < 625) { // 25^2 = 625
         if (p2Immune) {
           p2Bananas++;
           if (p2Bananas >= 2) {
@@ -582,13 +590,13 @@ function update(time, delta) {
         if (p2Bananas >= 2) {
           showBanner(true); // Animate with cyan for second banana
         }
-        return false;
+        bananas.splice(i, 1);
       }
-      return true;
-    });
+    }
     
     if (!p2Immune) {
-      for (let e of enemies) {
+      for (let i = 0; i < enemies.length; i++) {
+        const e = enemies[i];
         const ex = e.x - cameraX;
         if (ex < p2.x + p2.w && ex + e.w > p2.x && e.y < p2.y + p2.h && e.y + e.h > p2.y) {
           p2Alive = false;
@@ -600,32 +608,37 @@ function update(time, delta) {
         }
       }
     } else {
-      for (let e of enemies) {
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
         const ex = e.x - cameraX;
         if (ex < p2.x + p2.w && ex + e.w > p2.x && e.y < p2.y + p2.h && e.y + e.h > p2.y) {
-          const idx = enemies.indexOf(e);
-          if (idx >= 0) {
-            p2Points += e.type;
-            enemies.splice(idx, 1);
-            playTone(400, 0.2);
-          }
+          p2Points += e.type;
+          enemies.splice(i, 1);
+          playTone(400, 0.2);
         }
       }
     }
   }
   
   if (p1Alive) {
-    codes = codes.filter(c => {
-      if (Math.abs(p1.x - (c.x - cameraX)) < 25 && Math.abs(p1.y - c.y) < 25) {
+    // Optimized collision: use squared distance
+    for (let i = codes.length - 1; i >= 0; i--) {
+      const c = codes[i];
+      const dx = p1.x - (c.x - cameraX);
+      const dy = p1.y - c.y;
+      if (dx * dx + dy * dy < 625) { // 25^2 = 625
         p1Collected += 200;
         playTone(600, 0.1);
-        return false;
+        codes.splice(i, 1);
       }
-      return true;
-    });
+    }
     
-    bananas = bananas.filter(b => {
-      if (Math.abs(p1.x - (b.x - cameraX)) < 25 && Math.abs(p1.y - b.y) < 25) {
+    // Optimized collision: use squared distance
+    for (let i = bananas.length - 1; i >= 0; i--) {
+      const b = bananas[i];
+      const dx = p1.x - (b.x - cameraX);
+      const dy = p1.y - b.y;
+      if (dx * dx + dy * dy < 625) { // 25^2 = 625
         if (p1Immune) {
           p1Bananas++;
           if (p1Bananas >= 2) {
@@ -641,10 +654,9 @@ function update(time, delta) {
         if (p1Bananas >= 2) {
           showBanner(true); // Animate with cyan for second banana
         }
-        return false;
+        bananas.splice(i, 1);
       }
-      return true;
-    });
+    }
   }
   
   // Spawn rate increases with difficulty
@@ -668,19 +680,18 @@ function update(time, delta) {
     bananas.push({ x: bananaX, y: bananaY, size: 30, t: 0 });
   }
   
-  bananas.forEach(b => {
-    b.t += delta;
-  });
-  bananas = bananas.filter(b => {
-    if (b.t >= 15000) {
-      return false;
+  // Optimized: update and filter in one pass
+  for (let i = bananas.length - 1; i >= 0; i--) {
+    bananas[i].t += delta;
+    if (bananas[i].t >= 15000) {
+      bananas.splice(i, 1);
     }
-    return true;
-  });
+  }
   
   if (p1Alive) {
     if (!p1Immune) {
-      for (let e of enemies) {
+      for (let i = 0; i < enemies.length; i++) {
+        const e = enemies[i];
         const ex = e.x - cameraX;
         if (ex < p1.x + p1.w && ex + e.w > p1.x && e.y < p1.y + p1.h && e.y + e.h > p1.y) {
           p1Alive = false;
@@ -692,55 +703,72 @@ function update(time, delta) {
         }
       }
     } else {
-      for (let e of enemies) {
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
         const ex = e.x - cameraX;
         if (ex < p1.x + p1.w && ex + e.w > p1.x && e.y < p1.y + p1.h && e.y + e.h > p1.y) {
-          const idx = enemies.indexOf(e);
-          if (idx >= 0) {
-            p1Points += e.type;
-            enemies.splice(idx, 1);
-            playTone(400, 0.2);
-          }
+          p1Points += e.type;
+          enemies.splice(i, 1);
+          playTone(400, 0.2);
         }
       }
     }
   }
   
-  enemies = enemies.filter(e => e.x - cameraX > -100);
-  codes = codes.filter(c => c.x - cameraX > -100);
+  // Optimized: filter in reverse to avoid index shifting
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    if (enemies[i].x - cameraX <= -100) {
+      enemies.splice(i, 1);
+    }
+  }
+  for (let i = codes.length - 1; i >= 0; i--) {
+    if (codes[i].x - cameraX <= -100) {
+      codes.splice(i, 1);
+    }
+  }
   
-  // Update projectiles and check collisions with codes
-  projectiles = projectiles.filter(proj => {
+  // Optimized: update projectiles and check collisions
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const proj = projectiles[i];
     proj.x += proj.vx;
     const projX = proj.x - cameraX;
     
-    // Check collision with codes
-    let hit = false;
-    for (let i = codes.length - 1; i >= 0; i--) {
-      const c = codes[i];
-      const cx = c.x - cameraX;
-      if (projX > -50 && projX < 850 && Math.abs(projX - cx) < 25 && Math.abs(proj.y - c.y) < 25) {
-        if (proj.player === 1) {
-          p1Collected += 200;
-        } else {
-          p2Collected += 200;
-        }
-        playTone(600, 0.1);
-        codes.splice(i, 1);
-        hit = true;
-        break;
-      }
+    // Remove if off screen
+    if (projX >= 850) {
+      projectiles.splice(i, 1);
+      continue;
     }
     
-    // Remove if hit code or off screen
-    return !hit && (projX < 850);
-  });
+    // Check collision with codes (only if on screen)
+    if (projX > -50 && projX < 850) {
+      for (let j = codes.length - 1; j >= 0; j--) {
+        const c = codes[j];
+        const dx = projX - (c.x - cameraX);
+        const dy = proj.y - c.y;
+        if (dx * dx + dy * dy < 625) { // 25^2 = 625
+          if (proj.player === 1) {
+            p1Collected += 200;
+          } else {
+            p2Collected += 200;
+          }
+          playTone(600, 0.1);
+          codes.splice(j, 1);
+          projectiles.splice(i, 1);
+          break;
+        }
+      }
+    }
+  }
   
-  timerText.setText('Time: ' + Math.ceil(timer / 1000));
-  scoreText1.setText('P1: ' + (p1Collected + p1Points));
+  // Cache calculations to avoid repeated operations
+  const timeRemaining = Math.ceil(timer / 1000);
+  const p1Score = p1Collected + p1Points;
+  timerText.setText('Time: ' + timeRemaining);
+  scoreText1.setText('P1: ' + p1Score);
   bananaText1.setText('🍌: ' + p1Bananas);
   if (twoPlayer) {
-    scoreText2.setText('P2: ' + (p2Collected + p2Points));
+    const p2Score = p2Collected + p2Points;
+    scoreText2.setText('P2: ' + p2Score);
     bananaText2.setText('🍌: ' + p2Bananas);
   }
   
@@ -807,7 +835,10 @@ function drawGame() {
     }
   });
   
-  enemies.forEach(e => {
+  // Cache color calculations and reduce style changes
+  let lastColor = null;
+  for (let i = 0; i < enemies.length; i++) {
+    const e = enemies[i];
     const x = e.x - cameraX;
     if (x > -50 && x < 850) {
       e.pulse = (e.pulse || 0) + 0.12;
@@ -815,7 +846,11 @@ function drawGame() {
       // 4xx codes = orange (matches P1 palette), 5xx codes = red
       const color = e.type < 500 ? 0xffa500 : 0xcc3300;
       
-      graphics.fillStyle(color, 0.25);
+      // Only change fillStyle if color changed
+      if (color !== lastColor) {
+        graphics.fillStyle(color, 0.25);
+        lastColor = color;
+      }
       graphics.fillCircle(x + e.w/2, e.y + e.h/2, e.w * 0.7 * pulseScale);
       
       graphics.fillStyle(color, 1);
@@ -828,11 +863,11 @@ function drawGame() {
       const cx = x + e.w/2;
       const cy = e.y + e.h/2 - 5.25; // Center vertically (digit height is 10.5px)
       const offset = (code.length === 3 ? -13.5 : -9);
-      for (let i = 0; i < code.length; i++) {
-        drawDigit(graphics, cx + offset + i * 9, cy, code[i], 1.5);
+      for (let j = 0; j < code.length; j++) {
+        drawDigit(graphics, cx + offset + j * 9, cy, code[j], 1.5);
       }
     }
-  });
+  }
   
   if (p1) {
     // Draw monkey sprite: p1.y represents top position (based on collision detection)
