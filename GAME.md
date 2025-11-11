@@ -258,12 +258,12 @@ As difficulty increases, more complex patterns appear:
 - Gray when eliminated
 
 ### Effects
-- Pulsing glow on error codes
-- Highlight effects on collectibles
-- Visual feedback on collection
-- Banner animation for PLATANUS HACK MODE
-- Cyan animated banner when projectile shooting is active (2+ bananas)
-- Projectile trails showing shooting direction
+- Pulsing glow on error codes.
+- Highlight effects on collectibles.
+- Visual feedback on collection.
+- Banner animation for PLATANUS HACK MODE.
+- Cyan animated banner when projectile shooting is active (2+ bananas).
+- Projectile trails showing shooting direction.
 
 ## Audio Features
 
