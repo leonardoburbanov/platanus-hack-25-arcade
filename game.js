@@ -246,7 +246,7 @@ function create() {
     visible: false
   });
   
-  this.add.text(10, 570, 'UP: Jump | SPACE: Add P2', {
+  this.add.text(10, 570, 'P1: UP = Jump | P2: W = Jump | SPACE: Add Player 2', {
     fontSize: '14px',
     fontFamily: 'Arial',
     color: '#888888'
@@ -257,13 +257,13 @@ function create() {
   spaceKey = this.input.keyboard.addKey('SPACE');
   
   cursors.up.on('down', () => {
-    if (p1Alive && !gameOver) {
+    if (p1Alive && p1 && !gameOver) {
       if (!p1Jumping && p1.y >= groundY) {
         p1Jumping = true;
         p1JumpVel = -13;
         p1DoubleJumpUsed = false;
         playTone(300, 0.1);
-      } else if (p1Jumping && p1.y < groundY && !p1DoubleJumpUsed && p1.y < groundY - 10) {
+      } else if (p1Jumping && p1.y < groundY && !p1DoubleJumpUsed) {
         p1JumpVel = -13;
         p1DoubleJumpUsed = true;
         playTone(350, 0.1);
@@ -278,7 +278,7 @@ function create() {
         p2JumpVel = -13;
         p2DoubleJumpUsed = false;
         playTone(300, 0.1);
-      } else if (p2Jumping && p2.y < groundY && !p2DoubleJumpUsed && p2.y < groundY - 10) {
+      } else if (p2Jumping && p2.y < groundY && !p2DoubleJumpUsed) {
         p2JumpVel = -13;
         p2DoubleJumpUsed = true;
         playTone(350, 0.1);
@@ -341,6 +341,16 @@ function create() {
     codes.push({ x: 400 + i * 150, y: groundY - 50 - Math.random() * 100, r: 18, code });
   }
   spawnObstacle();
+  
+  // Initialize stars once
+  for (let i = 0; i < 30; i++) {
+    stars.push({
+      x: Math.random() * 2000,
+      y: Math.random() * 500,
+      size: 1.5,
+      speed: 0.3
+    });
+  }
   
   drawGame();
 }
@@ -461,7 +471,7 @@ function update(time, delta) {
       immuneTimerText1.setVisible(false);
       if (bannerText) bannerText.setVisible(false);
       stopStarMusic();
-    } else if (p1Bananas >= 2) {
+    } else if (p1Bananas >= 2 && p1) {
       // Auto-shoot projectiles in burst
       p1ShootTimer += delta;
       if (p1ShootTimer >= 150) { // Shoot every 150ms
@@ -496,7 +506,7 @@ function update(time, delta) {
       immuneTimerText2.setVisible(false);
       if (bannerText) bannerText.setVisible(false);
       stopStarMusic();
-    } else if (p2Bananas >= 2) {
+    } else if (p2Bananas >= 2 && p2) {
       // Auto-shoot projectiles in burst
       p2ShootTimer += delta;
       if (p2ShootTimer >= 150) { // Shoot every 150ms
@@ -530,7 +540,7 @@ function update(time, delta) {
     musicTime = 0;
   }
   
-  if (p1Alive) {
+  if (p1Alive && p1) {
     if (p1Jumping || p1.y < groundY) {
       p1.y += p1JumpVel;
       p1JumpVel += 0.55;
@@ -582,8 +592,6 @@ function update(time, delta) {
             immuneTimer2 += 2000; // Extend Platanus Hack mode by 2 seconds per banana
             if (p2Bananas >= 2) {
               p2ShootTimer = 0; // Start shooting immediately
-            }
-            if (p2Bananas >= 2) {
               showBanner(true); // Animate with cyan for second banana
             }
             bananas.splice(i, 1);
@@ -625,7 +633,7 @@ function update(time, delta) {
     }
   }
   
-  if (p1Alive) {
+  if (p1Alive && p1) {
     // Optimized collision: use squared distance
     for (let i = codes.length - 1; i >= 0; i--) {
       const c = codes[i];
@@ -651,8 +659,6 @@ function update(time, delta) {
             immuneTimer1 += 2000; // Extend Platanus Hack mode by 2 seconds per banana
             if (p1Bananas >= 2) {
               p1ShootTimer = 0; // Start shooting immediately
-            }
-            if (p1Bananas >= 2) {
               showBanner(true); // Animate with cyan for second banana
             }
             bananas.splice(i, 1);
@@ -698,7 +704,7 @@ function update(time, delta) {
     }
   }
   
-  if (p1Alive) {
+  if (p1Alive && p1) {
     if (!p1Immune) {
       for (let i = 0; i < enemies.length; i++) {
         const e = enemies[i];
@@ -824,17 +830,7 @@ function drawGame() {
   // Background is handled by Phaser's backgroundColor config
   
   // Draw simple stars (fewer, larger for better performance)
-  if (stars.length === 0) {
-    // Initialize stars - fewer for better performance
-    for (let i = 0; i < 30; i++) {
-      stars.push({
-        x: Math.random() * 2000,
-        y: Math.random() * 500,
-        size: 1.5,
-        speed: 0.3
-      });
-    }
-  }
+  // Stars are initialized in create() function
   
   stars.forEach(star => {
     const x = (star.x - cameraX * star.speed) % 2000;
@@ -1013,11 +1009,13 @@ function restartGame() {
   p2Jumping = false;
   p2JumpVel = 0;
   p2DoubleJumpUsed = false;
-  p1.x = 100;
-  p1.y = groundY;
+  if (p1) {
+    p1.x = 100;
+    p1.y = groundY;
+  }
   p2 = null;
   gameOver = false;
-  stars = []; // Reset stars
+  stars = []; // Reset stars - will be reinitialized in create()
   projectiles = [];
   p1Bananas = 0;
   p2Bananas = 0;
@@ -1025,30 +1023,41 @@ function restartGame() {
   p2ShootTimer = 0;
   if (immuneTimerText1) immuneTimerText1.setVisible(false);
   if (immuneTimerText2) immuneTimerText2.setVisible(false);
-  if (bannerText) bannerText.setVisible(false);
+  if (bannerText) {
+    bannerText.setVisible(false);
+    if (scene && scene.tweens) {
+      scene.tweens.killTweensOf(bannerText);
+    }
+  }
   stopStarMusic();
   musicTime = 0;
 }
 
 function playTone(frequency, duration) {
-  const audioContext = scene.sound.context;
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
-  
-  oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-  
-  oscillator.frequency.value = frequency;
-  oscillator.type = 'square';
-  
-  gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
-  
-  oscillator.start(audioContext.currentTime);
-  oscillator.stop(audioContext.currentTime + duration);
+  if (!scene || !scene.sound || !scene.sound.context) return;
+  try {
+    const audioContext = scene.sound.context;
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = frequency;
+    oscillator.type = 'square';
+    
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + duration);
+  } catch (e) {
+    // Silently fail if audio context is not available
+  }
 }
 
 function showBanner(secondBanana = false) {
+  if (!scene) return;
   if (!bannerText) {
     bannerText = scene.add.text(400, 150, 'PLATANUS HACK MODE', {
       fontSize: '48px',
@@ -1131,39 +1140,53 @@ function showBanner(secondBanana = false) {
 }
 
 function playStarMusic() {
-  if (starMusicOsc) return;
+  if (starMusicOsc || !scene || !scene.sound || !scene.sound.context) return;
   
-  const audioContext = scene.sound.context;
-  const now = audioContext.currentTime;
-  
-  starMusicOsc = audioContext.createOscillator();
-  starMusicOsc2 = audioContext.createOscillator();
-  starMusicGain = audioContext.createGain();
-  
-  starMusicOsc.type = 'sine';
-  starMusicOsc2.type = 'sine';
-  
-  starMusicOsc.frequency.value = 330;
-  starMusicOsc2.frequency.value = 392;
-  
-  starMusicOsc.connect(starMusicGain);
-  starMusicOsc2.connect(starMusicGain);
-  starMusicGain.connect(audioContext.destination);
-  
-  starMusicGain.gain.setValueAtTime(0.08, now);
-  
-  starMusicOsc.start(now);
-  starMusicOsc2.start(now);
+  try {
+    const audioContext = scene.sound.context;
+    const now = audioContext.currentTime;
+    
+    starMusicOsc = audioContext.createOscillator();
+    starMusicOsc2 = audioContext.createOscillator();
+    starMusicGain = audioContext.createGain();
+    
+    starMusicOsc.type = 'sine';
+    starMusicOsc2.type = 'sine';
+    
+    starMusicOsc.frequency.value = 330;
+    starMusicOsc2.frequency.value = 392;
+    
+    starMusicOsc.connect(starMusicGain);
+    starMusicOsc2.connect(starMusicGain);
+    starMusicGain.connect(audioContext.destination);
+    
+    starMusicGain.gain.setValueAtTime(0.08, now);
+    
+    starMusicOsc.start(now);
+    starMusicOsc2.start(now);
+  } catch (e) {
+    // Silently fail if audio context is not available
+    starMusicOsc = null;
+    starMusicOsc2 = null;
+    starMusicGain = null;
+  }
 }
 
 function stopStarMusic() {
-  if (starMusicOsc) {
-    starMusicOsc.stop();
+  try {
+    if (starMusicOsc) {
+      starMusicOsc.stop();
+      starMusicOsc = null;
+    }
+    if (starMusicOsc2) {
+      starMusicOsc2.stop();
+      starMusicOsc2 = null;
+    }
+    starMusicGain = null;
+  } catch (e) {
+    // Silently fail if audio context is not available
     starMusicOsc = null;
-  }
-  if (starMusicOsc2) {
-    starMusicOsc2.stop();
     starMusicOsc2 = null;
+    starMusicGain = null;
   }
-  starMusicGain = null;
 }
