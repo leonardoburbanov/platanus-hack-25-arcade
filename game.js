@@ -54,6 +54,7 @@ const digitPatterns = {
 };
 
 function drawDigit(g, x, y, digit, size) {
+  if (!g || !g.fillStyle) return;
   const p = digitPatterns[digit];
   if (!p) return;
   // Draw with black outline for contrast
@@ -78,6 +79,7 @@ function drawDigit(g, x, y, digit, size) {
 
 // Draw 8-bit style banana sprite - matches reference design
 function drawBanana8bit(g, x, y, size) {
+  if (!g || !g.fillStyle) return;
   const px = size / 10;
   const py = size / 10;
   
@@ -125,6 +127,7 @@ function drawBanana8bit(g, x, y, size) {
 // Colors: 0=transparent, 1=dark, 2=medium, 3=light, 4=black, 5=white
 // playerNum: 1 for P1 (orange/yellow), 2 for P2 (green/teal)
 function drawMonkey8bit(g, x, y, w, h, alive, immune, playerNum) {
+  if (!g || !g.fillStyle) return;
   const px = w / 8; // Pixel size based on width
   const py = h / 10; // Pixel size based on height
   // 8x10 pixel monkey sprite: head with ears, face, body, legs
@@ -174,22 +177,26 @@ function drawMonkey8bit(g, x, y, w, h, alive, immune, playerNum) {
   }
   
   // Draw circular cyan aura when in Platanus Hack mode (immune)
-  if (alive && immune) {
-    const centerX = x + w / 2;
-    const centerY = y + h / 2;
-    const radius = Math.max(w, h) * 0.7;
-    
-    // Outer glow
-    g.lineStyle(3, 0x00ffff, 0.6);
-    g.beginPath();
-    g.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    g.strokePath();
-    
-    // Inner glow
-    g.lineStyle(2, 0x88ffff, 0.8);
-    g.beginPath();
-    g.arc(centerX, centerY, radius * 0.85, 0, Math.PI * 2);
-    g.strokePath();
+  if (alive && immune && g && g.lineStyle) {
+    try {
+      const centerX = x + w / 2;
+      const centerY = y + h / 2;
+      const radius = Math.max(w, h) * 0.7;
+      
+      // Outer glow
+      g.lineStyle(3, 0x00ffff, 0.6);
+      g.beginPath();
+      g.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      g.strokePath();
+      
+      // Inner glow
+      g.lineStyle(2, 0x88ffff, 0.8);
+      g.beginPath();
+      g.arc(centerX, centerY, radius * 0.85, 0, Math.PI * 2);
+      g.strokePath();
+    } catch (e) {
+      // Silently fail if graphics context is invalid
+    }
   }
 }
 
@@ -823,112 +830,117 @@ function update(time, delta) {
 }
 
 function drawGame() {
-  if (!graphics) return;
-  graphics.clear();
-  
-  // Simple solid background (drawn once, Phaser handles the rest via backgroundColor)
-  // Background is handled by Phaser's backgroundColor config
-  
-  // Draw simple stars (fewer, larger for better performance)
-  // Stars are initialized in create() function
-  
-  stars.forEach(star => {
-    const x = (star.x - cameraX * star.speed) % 2000;
-    if (x >= -10 && x <= 810) {
-      graphics.fillStyle(0xffffff, 0.6);
-      graphics.fillCircle(x, star.y, star.size);
-    }
-  });
-  
-  // Draw ground line
-  graphics.lineStyle(3, 0x00ffff, 0.5);
-  graphics.moveTo(0, groundY + 28);
-  graphics.lineTo(800, groundY + 28);
-  graphics.strokePath();
-  
-  codes.forEach(c => {
-    const x = c.x - cameraX;
-    if (x > -50 && x < 850) {
-      graphics.fillStyle(0x00ff88, 0.9);
-      graphics.fillCircle(x, c.y, c.r);
-      graphics.lineStyle(2, 0x00ff88, 1);
-      graphics.strokeCircle(x, c.y, c.r);
-      
-      // Draw 2xx code dynamically (centered inside circle)
-      const code = (c.code || 200).toString();
-      const cx = x;
-      const cy = c.y - 5.25; // Center vertically (digit height is 10.5px)
-      const offset = (code.length === 3 ? -13.5 : -9);
-      for (let i = 0; i < code.length; i++) {
-        drawDigit(graphics, cx + offset + i * 9, cy, code[i], 1.5);
+  if (!graphics || !graphics.clear) return;
+  try {
+    graphics.clear();
+    
+    // Simple solid background (drawn once, Phaser handles the rest via backgroundColor)
+    // Background is handled by Phaser's backgroundColor config
+    
+    // Draw simple stars (fewer, larger for better performance)
+    // Stars are initialized in create() function
+    
+    stars.forEach(star => {
+      const x = (star.x - cameraX * star.speed) % 2000;
+      if (x >= -10 && x <= 810) {
+        graphics.fillStyle(0xffffff, 0.6);
+        graphics.fillCircle(x, star.y, star.size);
+      }
+    });
+    
+    // Draw ground line
+    graphics.lineStyle(3, 0x00ffff, 0.5);
+    graphics.moveTo(0, groundY + 28);
+    graphics.lineTo(800, groundY + 28);
+    graphics.strokePath();
+    
+    codes.forEach(c => {
+      const x = c.x - cameraX;
+      if (x > -50 && x < 850) {
+        graphics.fillStyle(0x00ff88, 0.9);
+        graphics.fillCircle(x, c.y, c.r);
+        graphics.lineStyle(2, 0x00ff88, 1);
+        graphics.strokeCircle(x, c.y, c.r);
+        
+        // Draw 2xx code dynamically (centered inside circle)
+        const code = (c.code || 200).toString();
+        const cx = x;
+        const cy = c.y - 5.25; // Center vertically (digit height is 10.5px)
+        const offset = (code.length === 3 ? -13.5 : -9);
+        for (let i = 0; i < code.length; i++) {
+          drawDigit(graphics, cx + offset + i * 9, cy, code[i], 1.5);
+        }
+      }
+    });
+    
+    bananas.forEach(b => {
+      const x = b.x - cameraX;
+      if (x > -50 && x < 850) {
+        drawBanana8bit(graphics, x - b.size/2, b.y - b.size/2, b.size);
+      }
+    });
+    
+    // Cache color calculations and reduce style changes
+    let lastColor = null;
+    for (let i = 0; i < enemies.length; i++) {
+      const e = enemies[i];
+      const x = e.x - cameraX;
+      if (x > -50 && x < 850) {
+        e.pulse = (e.pulse || 0) + 0.12;
+        const pulseScale = 1 + Math.sin(e.pulse) * 0.15;
+        // 4xx codes = orange (matches P1 palette), 5xx codes = red
+        const color = e.type < 500 ? 0xffa500 : 0xcc3300;
+        
+        // Only change fillStyle if color changed
+        if (color !== lastColor) {
+          graphics.fillStyle(color, 0.25);
+          lastColor = color;
+        }
+        graphics.fillCircle(x + e.w/2, e.y + e.h/2, e.w * 0.7 * pulseScale);
+        
+        graphics.fillStyle(color, 1);
+        graphics.fillRect(x, e.y, e.w, e.h);
+        graphics.lineStyle(4, 0xffffff, 1);
+        graphics.strokeRect(x, e.y, e.w, e.h);
+        
+        // Draw status code dynamically (centered inside rectangle)
+        const code = e.type.toString();
+        const cx = x + e.w/2;
+        const cy = e.y + e.h/2 - 5.25; // Center vertically (digit height is 10.5px)
+        const offset = (code.length === 3 ? -13.5 : -9);
+        for (let j = 0; j < code.length; j++) {
+          drawDigit(graphics, cx + offset + j * 9, cy, code[j], 1.5);
+        }
       }
     }
-  });
-  
-  bananas.forEach(b => {
-    const x = b.x - cameraX;
-    if (x > -50 && x < 850) {
-      drawBanana8bit(graphics, x - b.size/2, b.y - b.size/2, b.size);
+    
+    if (p1) {
+      // Draw monkey sprite: p1.y represents top position (based on collision detection)
+      // P1 uses orange/yellow color scheme
+      drawMonkey8bit(graphics, p1.x, p1.y, p1.w, p1.h, p1Alive, p1Immune, 1);
     }
-  });
-  
-  // Cache color calculations and reduce style changes
-  let lastColor = null;
-  for (let i = 0; i < enemies.length; i++) {
-    const e = enemies[i];
-    const x = e.x - cameraX;
-    if (x > -50 && x < 850) {
-      e.pulse = (e.pulse || 0) + 0.12;
-      const pulseScale = 1 + Math.sin(e.pulse) * 0.15;
-      // 4xx codes = orange (matches P1 palette), 5xx codes = red
-      const color = e.type < 500 ? 0xffa500 : 0xcc3300;
-      
-      // Only change fillStyle if color changed
-      if (color !== lastColor) {
-        graphics.fillStyle(color, 0.25);
-        lastColor = color;
+    
+    if (twoPlayer && p2) {
+      // Draw monkey sprite: p2.y represents top position (based on collision detection)
+      // P2 uses green/teal color scheme
+      drawMonkey8bit(graphics, p2.x, p2.y, p2.w, p2.h, p2Alive, p2Immune, 2);
+    }
+    
+    // Draw projectiles
+    projectiles.forEach(proj => {
+      const x = proj.x - cameraX;
+      if (x > -10 && x < 810) {
+        const color = proj.player === 1 ? 0xffa500 : 0x00ff88;
+        graphics.fillStyle(color, 1);
+        graphics.fillCircle(x, proj.y, 6);
+        graphics.lineStyle(2, 0xffffff, 1);
+        graphics.strokeCircle(x, proj.y, 6);
       }
-      graphics.fillCircle(x + e.w/2, e.y + e.h/2, e.w * 0.7 * pulseScale);
-      
-      graphics.fillStyle(color, 1);
-      graphics.fillRect(x, e.y, e.w, e.h);
-      graphics.lineStyle(4, 0xffffff, 1);
-      graphics.strokeRect(x, e.y, e.w, e.h);
-      
-      // Draw status code dynamically (centered inside rectangle)
-      const code = e.type.toString();
-      const cx = x + e.w/2;
-      const cy = e.y + e.h/2 - 5.25; // Center vertically (digit height is 10.5px)
-      const offset = (code.length === 3 ? -13.5 : -9);
-      for (let j = 0; j < code.length; j++) {
-        drawDigit(graphics, cx + offset + j * 9, cy, code[j], 1.5);
-      }
-    }
+    });
+  } catch (e) {
+    // Silently fail if graphics context is invalid
+    // This can happen during scene transitions
   }
-  
-  if (p1) {
-    // Draw monkey sprite: p1.y represents top position (based on collision detection)
-    // P1 uses orange/yellow color scheme
-    drawMonkey8bit(graphics, p1.x, p1.y, p1.w, p1.h, p1Alive, p1Immune, 1);
-  }
-  
-  if (twoPlayer && p2) {
-    // Draw monkey sprite: p2.y represents top position (based on collision detection)
-    // P2 uses green/teal color scheme
-    drawMonkey8bit(graphics, p2.x, p2.y, p2.w, p2.h, p2Alive, p2Immune, 2);
-  }
-  
-  // Draw projectiles
-  projectiles.forEach(proj => {
-    const x = proj.x - cameraX;
-    if (x > -10 && x < 810) {
-      const color = proj.player === 1 ? 0xffa500 : 0x00ff88;
-      graphics.fillStyle(color, 1);
-      graphics.fillCircle(x, proj.y, 6);
-      graphics.lineStyle(2, 0xffffff, 1);
-      graphics.strokeCircle(x, proj.y, 6);
-    }
-  });
 }
 
 function endGame(won) {
